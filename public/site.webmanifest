@@ -1,0 +1,12 @@
+{
+  "name": "Muhammad Abdullah — Full-Stack MERN Developer",
+  "short_name": "MA Portfolio",
+  "description": "Full-Stack MERN Developer building scalable web applications with React.js, Node.js, Express.js and MongoDB.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F172A",
+  "theme_color": "#0F172A",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
