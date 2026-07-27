@@ -28,7 +28,7 @@ export const profile = {
   phone: '+92 349 5589669',
   phoneHref: 'tel:+923495589669',
   // Drop your PDF in /public and keep this filename.
-  resumeUrl: '/resume.pdf',
+  resumeUrl: '/Muhammad_Abdullah_CV.pdf',
   // Optional: profile photo in /public (e.g. '/profile.jpg').
   // Leave null to render the animated monogram placeholder.
   photoUrl: null,

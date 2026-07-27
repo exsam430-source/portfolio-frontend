@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import {
   TbMail, TbMapPin, TbBriefcase, TbSend, TbCircleCheck, TbBrandGithub,
-  TbBrandLinkedin, TbPhone, TbRefresh, TbCopy,
+  TbBrandLinkedin, TbPhone, TbRefresh, TbCopy, TbBrandWhatsapp,
 } from 'react-icons/tb';
 
 import SectionHeading from '../ui/SectionHeading';
@@ -14,6 +14,8 @@ import { submitContact } from '../../api/services';
 import { validateContact } from '../../utils/validators';
 import { useProfile } from '../../context';
 import { fadeUp, slideLeft, slideRight, stagger, viewportOnce } from '../../utils/motion';
+
+const WHATSAPP_NUMBER = '923495589669'; // 03495589669 → international format
 
 const INITIAL = { name: '', email: '', subject: '', message: '', website: '' };
 
@@ -59,22 +61,62 @@ const buildSocials = (profile) => [
   { id: 'phone', icon: TbPhone, label: 'Phone', href: profile.socials.phone },
 ];
 
+/** Build the WhatsApp message from the contact data */
+const buildWhatsAppMessage = (contact) => {
+  const lines = [
+    `📬 *New Contact Message*`,
+    ``,
+    `👤 *From*`,
+    `• Name: ${contact.name}`,
+    `• Email: ${contact.email}`,
+    ``,
+    `📌 *Subject*`,
+    contact.subject,
+    ``,
+    `💬 *Message*`,
+    contact.message,
+  ];
+
+  return encodeURIComponent(lines.join('\n'));
+};
+
+/** Open WhatsApp with pre-filled message */
+const openWhatsApp = (contact) => {
+  const message = buildWhatsAppMessage(contact);
+  const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
+  window.open(url, '_blank', 'noopener,noreferrer');
+};
+
 export default function Contact() {
   const profile = useProfile();
   const INFO_CARDS = buildInfoCards(profile);
   const SOCIALS = buildSocials(profile);
   const [sent, setSent] = useState(false);
+  const [sentContact, setSentContact] = useState(null);
 
-  const { values, errors, touched, isSubmitting, handleChange, handleBlur, handleSubmit, setErrors, reset } =
-    useForm(INITIAL, validateContact);
+  const {
+    values, errors, touched, isSubmitting,
+    handleChange, handleBlur, handleSubmit, setErrors, reset,
+  } = useForm(INITIAL, validateContact);
 
   const onSubmit = handleSubmit(async (data) => {
     const toastId = toast.loading('Sending your message…');
     try {
       const res = await submitContact(data);
-      toast.success(res.message || 'Message sent successfully!', { id: toastId, duration: 5000 });
+      const contact = res?.data;
+
+      toast.success(res.message || 'Message sent! Redirecting to WhatsApp…', {
+        id: toastId,
+        duration: 4000,
+      });
+
+      setSentContact(contact);
       setSent(true);
       reset();
+
+      // Auto-open WhatsApp after short delay so toast is visible
+      setTimeout(() => openWhatsApp(contact), 1500);
+
     } catch (err) {
       toast.error(err.message, { id: toastId });
       if (err.fieldErrors && Object.keys(err.fieldErrors).length) setErrors(err.fieldErrors);
@@ -107,7 +149,7 @@ export default function Contact() {
         <h2 id="contact-heading" className="sr-only">Contact</h2>
 
         <div className="mt-14 grid gap-8 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-          {/* ── Info column ─────────────────────────────────── */}
+          {/* ── Info column ── */}
           <motion.div
             variants={stagger(0.1)}
             initial="hidden"
@@ -186,10 +228,32 @@ export default function Contact() {
                       title={label}
                       className="group grid size-11 place-items-center rounded-xl border border-line bg-surface/50 text-muted transition-all duration-300 hover:-translate-y-1 hover:border-primary/55 hover:text-primary hover:shadow-glow"
                     >
-                      <Icon size={19} className="transition-transform duration-300 group-hover:scale-110" aria-hidden="true" />
+                      <Icon
+                        size={19}
+                        className="transition-transform duration-300 group-hover:scale-110"
+                        aria-hidden="true"
+                      />
                     </a>
                   </li>
                 ))}
+
+                {/* WhatsApp social button */}
+                <li>
+                  <a
+                    href={`https://wa.me/${WHATSAPP_NUMBER}`}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    aria-label="WhatsApp"
+                    title="WhatsApp"
+                    className="group grid size-11 place-items-center rounded-xl border border-line bg-surface/50 text-muted transition-all duration-300 hover:-translate-y-1 hover:border-[#25D366]/55 hover:text-[#25D366] hover:shadow-glow"
+                  >
+                    <TbBrandWhatsapp
+                      size={19}
+                      className="transition-transform duration-300 group-hover:scale-110"
+                      aria-hidden="true"
+                    />
+                  </a>
+                </li>
               </ul>
 
               <div className="mt-6 flex items-center gap-2.5 rounded-xl border border-success/25 bg-success/8 px-4 py-3">
@@ -204,7 +268,7 @@ export default function Contact() {
             </motion.div>
           </motion.div>
 
-          {/* ── Form column ─────────────────────────────────── */}
+          {/* ── Form column ── */}
           <motion.div
             variants={slideRight}
             initial="hidden"
@@ -230,13 +294,28 @@ export default function Contact() {
                     <TbCircleCheck size={34} aria-hidden="true" />
                   </motion.span>
 
-                  <h3 className="mt-6 text-2xl font-bold">Message sent!</h3>
+                  <h3 className="mt-6 text-2xl font-bold">Message saved!</h3>
+
                   <p className="mt-2.5 max-w-sm text-sm leading-relaxed text-muted">
-                    Thanks for reaching out — a confirmation email is on its way to you, and I'll
-                    reply personally within 24 hours.
+                    Your message has been saved. WhatsApp should have opened automatically
+                    — if not, click the button below to send it directly.
                   </p>
 
-                  <button type="button" onClick={() => setSent(false)} className="btn btn-ghost mt-7">
+                  {/* WhatsApp button */}
+                  <button
+                    type="button"
+                    onClick={() => openWhatsApp(sentContact)}
+                    className="btn btn-primary mt-7 gap-2 !bg-[#25D366] hover:!bg-[#20bd5a] !border-[#25D366]"
+                  >
+                    <TbBrandWhatsapp size={20} aria-hidden="true" />
+                    Open WhatsApp
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setSent(false); setSentContact(null); }}
+                    className="btn btn-ghost mt-3"
+                  >
                     <TbRefresh size={16} aria-hidden="true" />
                     Send another message
                   </button>
@@ -290,23 +369,35 @@ export default function Contact() {
 
                   <div className="mt-4">
                     <FormField
-                      label="Message" name="message" as="textarea" required rows={6} maxLength={4000}
+                      label="Message" name="message" as="textarea" required
+                      rows={6} maxLength={4000}
                       placeholder="Tell me about your project, question or opportunity…"
                       value={values.message} onChange={handleChange} onBlur={handleBlur}
                       error={errors.message} touched={touched.message} disabled={isSubmitting}
                     />
                   </div>
 
-                  <button type="submit" disabled={isSubmitting} className="btn btn-primary mt-6 w-full !py-3.5">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="btn btn-primary mt-6 w-full !py-3.5"
+                  >
                     {isSubmitting ? (
-                      <><Spinner size={17} label="Sending" /> Sending your message…</>
+                      <>
+                        <Spinner size={17} label="Sending" />
+                        Sending your message…
+                      </>
                     ) : (
-                      <><TbSend size={17} aria-hidden="true" /> Send Message</>
+                      <>
+                        <TbBrandWhatsapp size={17} aria-hidden="true" />
+                        Send via WhatsApp
+                      </>
                     )}
                   </button>
 
                   <p className="mt-3.5 text-center text-[0.6875rem] text-muted">
-                    Prefer email? Write to{' '}
+                    Message saves to database then opens WhatsApp with your details pre-filled.
+                    Prefer email?{' '}
                     <a href={profile.socials.email} className="text-primary-soft hover:underline">
                       {profile.email}
                     </a>

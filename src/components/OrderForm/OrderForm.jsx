@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import {
   TbSend, TbCircleCheck, TbCopy, TbRocket, TbShieldCheck, TbClockHour4, TbRefresh,
+  TbBrandWhatsapp,
 } from 'react-icons/tb';
 
 import SectionHeading from '../ui/SectionHeading';
@@ -14,10 +15,12 @@ import { submitOrder, fetchOrderOptions } from '../../api/services';
 import { validateOrder } from '../../utils/validators';
 import { fadeUp, slideLeft, slideRight, stagger, viewportOnce } from '../../utils/motion';
 
+const WHATSAPP_NUMBER = '923495589669'; // 03495589669 → international format
+
 const INITIAL = {
   name: '', email: '', phone: '', serviceType: '', projectTitle: '',
   description: '', budget: '', timeline: '', techPreference: '',
-  website: '', // honeypot — real users never see or fill this
+  website: '', // honeypot
 };
 
 const PROMISES = [
@@ -25,6 +28,41 @@ const PROMISES = [
   { icon: TbShieldCheck, title: 'No obligation', text: 'Submitting a request costs nothing and commits you to nothing.' },
   { icon: TbRocket, title: 'Clear scope first', text: "We agree on deliverables, timeline and price before any code is written." },
 ];
+
+/** Build the WhatsApp message from the order data */
+const buildWhatsAppMessage = (order) => {
+  const lines = [
+    `🚀 *New Project Order — ${order.reference}*`,
+    ``,
+    `👤 *Client Details*`,
+    `• Name: ${order.name}`,
+    `• Email: ${order.email}`,
+    order.phone ? `• Phone: ${order.phone}` : null,
+    ``,
+    `📋 *Project Details*`,
+    `• Service: ${order.serviceType}`,
+    `• Title: ${order.projectTitle}`,
+    `• Budget: ${order.budget}`,
+    `• Timeline: ${order.timeline}`,
+    order.techPreference ? `• Tech Preference: ${order.techPreference}` : null,
+    ``,
+    `📝 *Description*`,
+    order.description,
+    ``,
+    `🔖 *Reference:* ${order.reference}`,
+  ];
+
+  return encodeURIComponent(
+    lines.filter((l) => l !== null).join('\n')
+  );
+};
+
+/** Open WhatsApp with the pre-filled message */
+const openWhatsApp = (order) => {
+  const message = buildWhatsAppMessage(order);
+  const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
+  window.open(url, '_blank', 'noopener,noreferrer');
+};
 
 export default function OrderForm() {
   const { prefilledService, clearPrefilledService, addSubmittedOrder } = useUI();
@@ -35,16 +73,16 @@ export default function OrderForm() {
   const form = useForm(INITIAL, validateOrder);
   const { values, errors, touched, isSubmitting, handleChange, handleBlur, handleSubmit, setValue, setErrors, reset } = form;
 
-  /* Keep dropdowns in sync with the backend enums; fall back to local data. */
+  /* Keep dropdowns in sync with the backend enums */
   useEffect(() => {
     let cancelled = false;
     fetchOrderOptions()
       .then((data) => { if (!cancelled && data) setOptions(data); })
-      .catch(() => { /* offline or API down — local defaults already loaded */ });
+      .catch(() => {});
     return () => { cancelled = true; };
   }, []);
 
-  /* A service card was clicked → preselect that service type. */
+  /* A service card was clicked → preselect that service type */
   useEffect(() => {
     if (prefilledService) {
       setValue('serviceType', prefilledService);
@@ -56,12 +94,28 @@ export default function OrderForm() {
     const toastId = toast.loading('Submitting your project request…');
     try {
       const res = await submitOrder(data);
-      const reference = res?.data?.reference;
+      const order = res?.data;
 
-      toast.success(res.message || 'Order submitted successfully!', { id: toastId, duration: 6000 });
-      if (reference) addSubmittedOrder(reference);
-      setSuccess({ reference, name: data.name, email: data.email, title: data.projectTitle });
+      toast.success(res.message || 'Order submitted! Redirecting to WhatsApp…', {
+        id: toastId,
+        duration: 4000,
+      });
+
+      if (order?.reference) addSubmittedOrder(order.reference);
+
+      setSuccess({
+        reference: order.reference,
+        name: data.name,
+        email: data.email,
+        title: data.projectTitle,
+        order, // full order for WhatsApp message
+      });
+
       reset();
+
+      // Auto-open WhatsApp after short delay so toast is visible
+      setTimeout(() => openWhatsApp(order), 1500);
+
     } catch (err) {
       toast.error(err.message, { id: toastId });
       if (err.fieldErrors && Object.keys(err.fieldErrors).length) setErrors(err.fieldErrors);
@@ -94,7 +148,7 @@ export default function OrderForm() {
         <h2 id="order-heading" className="sr-only">Submit a project order</h2>
 
         <div className="mt-14 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.55fr)]">
-          {/* ── Left: reassurance panel ────────────────────── */}
+          {/* ── Left: reassurance panel ── */}
           <motion.aside
             variants={stagger(0.1)}
             initial="hidden"
@@ -107,7 +161,7 @@ export default function OrderForm() {
               <ol className="mt-5 space-y-5">
                 {[
                   { step: '01', title: 'You submit the brief', text: 'Fill in the form — it takes about two minutes.' },
-                  { step: '02', title: 'I review and reply', text: 'Within 24 hours you get questions or a proposal.' },
+                  { step: '02', title: 'WhatsApp redirect', text: 'You\'re taken to WhatsApp with all details pre-filled.' },
                   { step: '03', title: 'We agree the scope', text: 'Deliverables, milestones, timeline and price in writing.' },
                   { step: '04', title: 'I build and ship', text: 'Regular updates, then handover with documentation.' },
                 ].map((item) => (
@@ -139,7 +193,7 @@ export default function OrderForm() {
             </motion.ul>
           </motion.aside>
 
-          {/* ── Right: the form ────────────────────────────── */}
+          {/* ── Right: the form ── */}
           <motion.div
             variants={slideRight}
             initial="hidden"
@@ -149,7 +203,7 @@ export default function OrderForm() {
           >
             <AnimatePresence mode="wait">
               {success ? (
-                /* ── Success state ──────────────────────── */
+                /* ── Success state ── */
                 <motion.div
                   key="success"
                   initial={{ opacity: 0, scale: 0.96 }}
@@ -166,12 +220,14 @@ export default function OrderForm() {
                     <TbCircleCheck size={34} aria-hidden="true" />
                   </motion.span>
 
-                  <h3 className="mt-6 text-2xl font-bold">Request received, {success.name.split(' ')[0]}!</h3>
+                  <h3 className="mt-6 text-2xl font-bold">
+                    Request received, {success.name.split(' ')[0]}!
+                  </h3>
 
                   <p className="mt-2.5 max-w-md text-sm leading-relaxed text-muted">
-                    I've got your brief for <strong className="text-content">{success.title}</strong>. A confirmation
-                    email is on its way to <strong className="text-content">{success.email}</strong>, and I'll
-                    personally reply within 24–48 hours.
+                    Your project brief for{' '}
+                    <strong className="text-content">{success.title}</strong> has been saved.
+                    WhatsApp should have opened automatically — if not, click the button below.
                   </p>
 
                   {success.reference && (
@@ -185,22 +241,36 @@ export default function OrderForm() {
                         className="group flex w-full items-center justify-center gap-2.5 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 font-mono text-lg font-bold text-primary-soft transition-colors hover:border-primary/60"
                       >
                         {success.reference}
-                        <TbCopy size={16} className="opacity-60 transition-opacity group-hover:opacity-100" aria-hidden="true" />
+                        <TbCopy
+                          size={16}
+                          className="opacity-60 transition-opacity group-hover:opacity-100"
+                          aria-hidden="true"
+                        />
                       </button>
                     </div>
                   )}
 
+                  {/* WhatsApp button */}
+                  <button
+                    type="button"
+                    onClick={() => openWhatsApp(success.order)}
+                    className="btn btn-primary mt-7 gap-2 !bg-[#25D366] hover:!bg-[#20bd5a] !border-[#25D366]"
+                  >
+                    <TbBrandWhatsapp size={20} aria-hidden="true" />
+                    Open WhatsApp
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => setSuccess(null)}
-                    className="btn btn-ghost mt-7"
+                    className="btn btn-ghost mt-3"
                   >
                     <TbRefresh size={16} aria-hidden="true" />
                     Submit another project
                   </button>
                 </motion.div>
               ) : (
-                /* ── Form ───────────────────────────────── */
+                /* ── Form ── */
                 <motion.form
                   key="form"
                   initial={{ opacity: 0 }}
@@ -220,17 +290,13 @@ export default function OrderForm() {
                     </div>
                   </div>
 
-                  {/* Honeypot — visually hidden, ignored by real users */}
+                  {/* Honeypot */}
                   <div className="absolute left-[-9999px] top-0" aria-hidden="true">
                     <label htmlFor="website">Leave this field empty</label>
                     <input
-                      id="website"
-                      name="website"
-                      type="text"
-                      tabIndex={-1}
-                      autoComplete="off"
-                      value={values.website}
-                      onChange={handleChange}
+                      id="website" name="website" type="text"
+                      tabIndex={-1} autoComplete="off"
+                      value={values.website} onChange={handleChange}
                     />
                   </div>
 
@@ -306,7 +372,11 @@ export default function OrderForm() {
                     />
                   </div>
 
-                  <button type="submit" disabled={isSubmitting} className="btn btn-primary mt-7 w-full !py-3.5">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="btn btn-primary mt-7 w-full !py-3.5"
+                  >
                     {isSubmitting ? (
                       <>
                         <Spinner size={17} label="Submitting" />
@@ -314,15 +384,15 @@ export default function OrderForm() {
                       </>
                     ) : (
                       <>
-                        <TbSend size={17} aria-hidden="true" />
-                        Submit Project Order
+                        <TbBrandWhatsapp size={17} aria-hidden="true" />
+                        Submit & Continue on WhatsApp
                       </>
                     )}
                   </button>
 
                   <p className="mt-3.5 text-center text-[0.6875rem] leading-relaxed text-muted">
-                    Your details are stored securely and never shared. You'll receive an instant
-                    confirmation email with your reference number.
+                    Your details are saved securely. After submitting, you'll be redirected to
+                    WhatsApp with your project details pre-filled.
                   </p>
                 </motion.form>
               )}

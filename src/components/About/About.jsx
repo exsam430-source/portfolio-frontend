@@ -169,11 +169,18 @@ export default function About() {
             </motion.div>
 
             {/* CTAs */}
+            {/* CTAs */}
             <motion.div variants={fadeUp} className="mt-9 flex flex-wrap gap-3">
-              <a href={profile.resumeUrl} download className="btn btn-primary">
-                <TbDownload size={17} aria-hidden="true" />
-                Download CV
-              </a>
+                <a
+                  href={profile.resumeUrl}
+                  download="Muhammad_Abdullah_CV.pdf"
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="btn btn-primary"
+                >
+                  <TbDownload size={17} aria-hidden="true" />
+                  Download CV
+                </a>
               <a href={profile.socials.email} className="btn btn-ghost">
                 <TbMail size={17} aria-hidden="true" />
                 {profile.email}
