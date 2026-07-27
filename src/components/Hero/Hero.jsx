@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion';
 import {
-  TbArrowDown, TbDownload, TbEye, TbMapPin, TbBrandGithub, TbBrandLinkedin, TbMail, TbPhone,
+  TbArrowDown, TbDownload, TbEye, TbMapPin, 
+  TbBrandGithub, TbBrandLinkedin, TbMail, 
+  TbBrandWhatsapp,  // ← Add this
 } from 'react-icons/tb';
 import {
   SiReact, SiNodedotjs, SiMongodb, SiExpress, SiJavascript, SiTailwindcss,
@@ -23,10 +25,10 @@ const FLOATING = [
 
 /** Built from context so the links always match profile.js. */
 const buildSocials = (profile) => [
-  { href: profile.socials.github, Icon: TbBrandGithub, label: 'GitHub profile' },
-  { href: profile.socials.linkedin, Icon: TbBrandLinkedin, label: 'LinkedIn profile' },
-  { href: profile.socials.email, Icon: TbMail, label: 'Send an email' },
-  { href: profile.socials.phone, Icon: TbPhone, label: 'Call me' },
+  { href: profile.socials.github,    Icon: TbBrandGithub,    label: 'GitHub profile' },
+  { href: profile.socials.linkedin,  Icon: TbBrandLinkedin,  label: 'LinkedIn profile' },
+  { href: profile.socials.email,     Icon: TbMail,           label: 'Send an email' },
+  { href: profile.socials.whatsapp,  Icon: TbBrandWhatsapp,  label: 'WhatsApp me' },  // ← Better than tel:
 ];
 
 export default function Hero() {

@@ -35,11 +35,12 @@ export const profile = {
 
   // ── Social ──────────────────────────────────────────────────
   socials: {
-    github: 'https://github.com/exsam430-source',
-    linkedin: 'https://www.linkedin.com/in/muhammadabdullah-44a90b342',
-    email: 'mailto:exsam430@gmail.com',
-    phone: 'tel:+923495589669',
-  },
+  github:   'https://github.com/exsam430-source',
+  linkedin: 'https://www.linkedin.com/in/muhammad-abdullah-44a90b342/',
+  email:    'mailto:exsam430@gmail.com',
+  phone:    'tel:+923495589669',
+  whatsapp: 'https://wa.me/923495589669',  // ← ADD THIS
+},
 
   // ── Copy ────────────────────────────────────────────────────
   roles: [
