@@ -37,7 +37,7 @@ export const profile = {
   socials: {
   github:   'https://github.com/exsam430-source',
   linkedin: 'https://www.linkedin.com/in/muhammad-abdullah-44a90b342/',
-  email:    'mailto:exsam430@gmail.com',
+  email:    'https://mail.google.com/mail/?view=cm&fs=1&to=exsam430@gmail.com&su=Hello%20Muhammad',
   phone:    'tel:+923495589669',
   whatsapp: 'https://wa.me/923495589669',  // ← ADD THIS
 },
