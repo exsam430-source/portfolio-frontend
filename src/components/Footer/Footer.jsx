@@ -37,8 +37,8 @@ export default function Footer() {
     >
       {/* Top glow */}
       <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 rounded-full"
+  aria-hidden="true"
+  className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 rounded-full hidden md:block"
         style={{
           width: '34rem',
           height: '34rem',

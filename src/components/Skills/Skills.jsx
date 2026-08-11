@@ -30,8 +30,8 @@ export default function Skills() {
     <section id="skills" className="section relative overflow-hidden" aria-labelledby="skills-heading">
       {/* Ambient glow */}
       <div
-        aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-1/4 -z-10 -translate-x-1/2 rounded-full"
+  aria-hidden="true"
+  className="pointer-events-none absolute left-1/2 top-1/4 -z-10 -translate-x-1/2 rounded-full hidden md:block"
         style={{
           width: '38rem',
           height: '38rem',

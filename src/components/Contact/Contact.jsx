@@ -116,8 +116,8 @@ export default function Contact() {
     >
       {/* Ambient glow */}
       <div
-        aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 left-1/2 -z-10 -translate-x-1/2 rounded-full"
+  aria-hidden="true"
+  className="pointer-events-none absolute bottom-0 left-1/2 -z-10 -translate-x-1/2 rounded-full hidden md:block"
         style={{
           width: '38rem',
           height: '38rem',

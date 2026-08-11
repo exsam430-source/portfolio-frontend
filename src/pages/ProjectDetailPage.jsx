@@ -147,7 +147,10 @@ export default function ProjectDetailPage() {
         {/* ══════════════════════════════════════════
             HERO SECTION
         ══════════════════════════════════════════ */}
-        <section className="relative overflow-hidden" style={{ minHeight: '55vh' }}>
+        <section
+  className="relative overflow-hidden"
+  style={{ minHeight: '55vh', width: '100%' }}
+>
           {/* Background Image */}
           <div className="absolute inset-0">
             {project.thumbnail?.url ? (
@@ -207,7 +210,10 @@ export default function ProjectDetailPage() {
           />
 
           {/* Content */}
-          <div className="container-x relative z-10 flex min-h-[55vh] flex-col justify-end pb-12 pt-24">
+         <div
+  className="container-x relative z-10 flex min-h-[55vh] flex-col justify-end pb-12 pt-24"
+  style={{ width: '100%', maxWidth: '100%' }}
+>
             {/* Breadcrumb */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}

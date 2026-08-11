@@ -23,16 +23,16 @@ export default function Services() {
     >
       {/* Ambient glow */}
       <div
-        aria-hidden="true"
-        className="pointer-events-none absolute right-0 top-1/3 -z-10 rounded-full"
-        style={{
-          width: '32rem',
-          height: '32rem',
-          background:
-            'radial-gradient(circle, rgba(108,99,255,0.08) 0%, transparent 70%)',
-          filter: 'blur(80px)',
-        }}
-      />
+  aria-hidden="true"
+  className="pointer-events-none absolute right-0 top-1/3 -z-10 rounded-full hidden md:block"
+  style={{
+    width: '32rem',
+    height: '32rem',
+    background:
+      'radial-gradient(circle, rgba(108,99,255,0.08) 0%, transparent 70%)',
+    filter: 'blur(80px)',
+  }}
+/>
 
       <div className="container-x">
         <SectionHeading
