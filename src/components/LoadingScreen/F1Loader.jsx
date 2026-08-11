@@ -10,41 +10,88 @@ export default function F1Loader({ onComplete }) {
   const [audioLoaded, setAudioLoaded] = useState(false);
 
   /* ── Audio Setup ── */
-  useEffect(() => {
-    const reduceMotion =
-      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    if (reduceMotion) {
-      onComplete();
-      return;
-    }
+useEffect(() => {
+  const reduceMotion =
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  if (reduceMotion) {
+    onComplete();
+    return;
+  }
 
-    try {
-      const audio = new Audio('/sounds/bmw-engine.mp3');
-      audio.volume = 0.35;
-      audio.loop = true;
-      audioRef.current = audio;
+  try {
+    /* Create audio with muted initial state (bypasses autoplay block) */
+    const audio = new Audio('/sounds/bmw-engine.mp3');
+    audio.volume = 0.35;
+    audio.loop = true;
+    audio.muted = false;
+    audio.preload = 'auto';
+    audioRef.current = audio;
 
-      audio.addEventListener('canplaythrough', () => setAudioLoaded(true));
-      audio.addEventListener('error', () => setAudioLoaded(false));
+    /* Multiple event listeners for cross-browser support */
+    audio.addEventListener('canplaythrough', () => {
+      setAudioLoaded(true);
+    });
 
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => setAudioLoaded(true))
-          .catch(() => setAudioLoaded(false));
-      }
-    } catch {
+    audio.addEventListener('loadeddata', () => {
+      setAudioLoaded(true);
+    });
+
+    audio.addEventListener('error', (e) => {
+      console.warn('Audio load error:', e);
       setAudioLoaded(false);
-    }
+    });
 
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-        audioRef.current = null;
+    /* Try to play immediately (may fail due to autoplay policy) */
+    const attemptAutoplay = async () => {
+      try {
+        await audio.play();
+        setAudioLoaded(true);
+        console.log('✅ Audio autoplay successful');
+      } catch (err) {
+        console.warn('⚠️ Autoplay blocked — waiting for user interaction');
+        setAudioLoaded(false);
+
+        /* Set up listeners to play on ANY user interaction */
+        const playOnInteraction = async () => {
+          try {
+            await audio.play();
+            setAudioLoaded(true);
+            console.log('✅ Audio started after interaction');
+
+            /* Remove listeners once audio is playing */
+            document.removeEventListener('click', playOnInteraction);
+            document.removeEventListener('touchstart', playOnInteraction);
+            document.removeEventListener('keydown', playOnInteraction);
+            document.removeEventListener('scroll', playOnInteraction);
+            document.removeEventListener('mousemove', playOnInteraction);
+          } catch (playErr) {
+            console.warn('Audio play failed:', playErr);
+          }
+        };
+
+        /* Listen for ANY user interaction */
+        document.addEventListener('click', playOnInteraction, { once: true });
+        document.addEventListener('touchstart', playOnInteraction, { once: true });
+        document.addEventListener('keydown', playOnInteraction, { once: true });
+        document.addEventListener('scroll', playOnInteraction, { once: true });
+        document.addEventListener('mousemove', playOnInteraction, { once: true });
       }
     };
-  }, []);
+
+    attemptAutoplay();
+  } catch (err) {
+    console.warn('Audio setup failed:', err);
+    setAudioLoaded(false);
+  }
+
+  return () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+  };
+}, []);
 
   /* ── Phase Management ── */
   useEffect(() => {
@@ -115,17 +162,33 @@ export default function F1Loader({ onComplete }) {
     <AnimatePresence>
       {phase !== 'done' && (
         <motion.div
-          key="sports-loader"
-          exit={{ opacity: 0, scale: 1.08 }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden"
-          style={{ background: '#050816' }}
-          onClick={() => {
-            if (audioRef.current && audioRef.current.paused) {
-              audioRef.current.play().catch(() => {});
-            }
-          }}
-        >
+  key="sports-loader"
+  exit={{ opacity: 0, scale: 1.08 }}
+  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+  className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden cursor-pointer"
+  style={{ background: '#050816' }}
+  onClick={async () => {
+    if (audioRef.current) {
+      try {
+        if (audioRef.current.paused) {
+          await audioRef.current.play();
+          setAudioLoaded(true);
+        }
+      } catch (err) {
+        console.warn('Manual play failed:', err);
+      }
+    }
+  }}
+  onTouchStart={async () => {
+    if (audioRef.current && audioRef.current.paused) {
+      try {
+        await audioRef.current.play();
+        setAudioLoaded(true);
+      } catch {}
+    }
+  }}
+>
+
           {/* Stars */}
           <div className="absolute inset-0 overflow-hidden">
             {Array.from({ length: 120 }).map((_, i) => (
@@ -1331,19 +1394,41 @@ export default function F1Loader({ onComplete }) {
                 </div>
               </div>
 
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: [0, 0.4, 0] }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  delay: 1,
-                }}
-                className="mt-5 text-[0.55rem] uppercase tracking-widest"
-                style={{ color: 'rgba(255,255,255,0.15)' }}
-              >
-                Tap anywhere for sound
-              </motion.p>
+              <motion.div
+  initial={{ opacity: 0 }}
+  animate={{ opacity: 1 }}
+  transition={{ delay: 0.5 }}
+  className="mt-5 flex items-center gap-2 text-[0.65rem] uppercase tracking-widest"
+  style={{
+    color: audioLoaded
+      ? 'rgba(108,99,255,0.6)'
+      : 'rgba(255,255,255,0.3)',
+  }}
+>
+  {audioLoaded ? (
+    <>
+      <motion.span
+        animate={{ scale: [1, 1.3, 1] }}
+        transition={{ duration: 1, repeat: Infinity }}
+        style={{ fontSize: '14px' }}
+      >
+        🔊
+      </motion.span>
+      <span>Engine Sound ON</span>
+    </>
+  ) : (
+    <>
+      <motion.span
+        animate={{ opacity: [0.3, 1, 0.3] }}
+        transition={{ duration: 1.5, repeat: Infinity }}
+        style={{ fontSize: '14px' }}
+      >
+        👆
+      </motion.span>
+      <span>Click anywhere for engine sound</span>
+    </>
+  )}
+</motion.div>
             </>
           )}
 
