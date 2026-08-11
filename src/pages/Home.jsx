@@ -20,8 +20,6 @@ import ErrorBoundary from '../components/ui/ErrorBoundary';
 import useScrollSpy from '../hooks/useScrollSpy';
 import { useUI, useNavigation } from '../context';
 
-/* Each section is individually boundary-wrapped: if one throws, the rest of
-   the page still renders instead of showing a blank screen. */
 const SECTIONS = [
   { name: 'about', Component: About },
   { name: 'skills', Component: Skills },
@@ -44,13 +42,12 @@ export default function Home() {
   return (
     <>
       <Navbar />
-
-      {/* Fade the page in as the loading screen fades out. */}
       <motion.main
         id="main"
         initial={{ opacity: 0 }}
         animate={{ opacity: isLoading ? 0 : 1 }}
         transition={{ duration: 0.7, delay: isLoading ? 0 : 0.15 }}
+        style={{ background: 'var(--bg)' }}
       >
         <ErrorBoundary name="hero">
           <Hero />

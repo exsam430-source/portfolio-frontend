@@ -9,7 +9,11 @@ export default function Testimonials() {
   const testimonials = useTestimonials();
 
   return (
-    <section id="testimonials" className="section !pt-0" aria-labelledby="testimonials-heading">
+    <section
+      id="testimonials"
+      className="section !pt-0"
+      aria-labelledby="testimonials-heading"
+    >
       <div className="container-x">
         <SectionHeading
           eyebrow="Testimonials"
@@ -17,7 +21,9 @@ export default function Testimonials() {
           highlight="say about working with me"
           subtitle="Feedback from the people who trusted me with their products."
         />
-        <h2 id="testimonials-heading" className="sr-only">Client testimonials</h2>
+        <h2 id="testimonials-heading" className="sr-only">
+          Client testimonials
+        </h2>
 
         <motion.ul
           variants={stagger(0.09)}
@@ -34,40 +40,74 @@ export default function Testimonials() {
               transition={{ type: 'spring', stiffness: 300, damping: 24 }}
               className="card card-gradient-edge relative overflow-hidden p-6 sm:p-7"
             >
+              {/* Quote icon */}
               <TbQuote
                 size={78}
                 aria-hidden="true"
-                className="pointer-events-none absolute -right-2 -top-3 opacity-[0.07]"
-                style={{ color: item.accent }}
+                className="pointer-events-none absolute -right-2 -top-3"
+                style={{ color: item.accent, opacity: 0.07 }}
+              />
+
+              {/* Neon accent top border */}
+              <div
+                className="absolute inset-x-0 top-0 h-[2px] rounded-t-2xl"
+                style={{
+                  background: `linear-gradient(90deg, ${item.accent}, transparent)`,
+                  opacity: 0.6,
+                }}
+                aria-hidden="true"
               />
 
               {/* Rating */}
-              <div className="flex gap-0.5" role="img" aria-label={`${item.rating} out of 5 stars`}>
+              <div
+                className="flex gap-0.5"
+                role="img"
+                aria-label={`${item.rating} out of 5 stars`}
+              >
                 {Array.from({ length: 5 }).map((_, i) => (
                   <TbStarFilled
                     key={i}
                     size={15}
-                    className={i < item.rating ? 'text-warning' : 'text-line'}
+                    style={{
+                      color: i < item.rating ? '#f59e0b' : 'var(--border)',
+                    }}
                     aria-hidden="true"
                   />
                 ))}
               </div>
 
-              <blockquote className="relative mt-4 text-[0.9375rem] leading-relaxed text-content/88">
-                “{item.text}”
+              <blockquote
+                className="relative mt-4 text-[0.9375rem] leading-relaxed"
+                style={{ color: 'var(--text)', opacity: 0.88 }}
+              >
+                "{item.text}"
               </blockquote>
 
-              <figcaption className="mt-6 flex items-center gap-3 border-t border-line/70 pt-5">
+              <figcaption
+                className="mt-6 flex items-center gap-3 border-t pt-5"
+                style={{ borderColor: 'var(--border)' }}
+              >
                 <span
                   className="grid size-11 shrink-0 place-items-center rounded-xl text-sm font-bold text-white"
-                  style={{ background: `linear-gradient(135deg, ${item.accent}, ${item.accent}88)` }}
+                  style={{
+                    background: `linear-gradient(135deg, ${item.accent}, ${item.accent}88)`,
+                    boxShadow: `0 0 15px ${item.accent}40`,
+                  }}
                   aria-hidden="true"
                 >
                   {item.initials}
                 </span>
                 <div>
-                  <p className="text-[0.875rem] font-bold">{item.name}</p>
-                  <p className="text-[0.75rem] text-muted">
+                  <p
+                    className="text-[0.875rem] font-bold"
+                    style={{ color: 'var(--text)' }}
+                  >
+                    {item.name}
+                  </p>
+                  <p
+                    className="text-[0.75rem]"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
                     {item.role} · {item.company}
                   </p>
                 </div>

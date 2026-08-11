@@ -1,9 +1,3 @@
-/**
- * Barrel export for the Context API layer.
- * Import providers and hooks from one place:
- *
- *   import { AppProviders, useProfile, useUI } from '../context';
- */
 export {
   default as PortfolioContext,
   PortfolioProvider,
@@ -22,5 +16,5 @@ export {
 } from './PortfolioContext';
 
 export { default as UIContext, UIProvider, useUI } from './UIContext';
-
 export { default as AppProviders } from './AppProviders';
+export { ThemeProvider, useTheme } from './ThemeContext';

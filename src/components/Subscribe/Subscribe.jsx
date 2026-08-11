@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { TbMail, TbCircleCheck, TbSparkles, TbUsers, TbSend } from 'react-icons/tb';
+import {
+  TbMail, TbCircleCheck, TbSparkles, TbUsers, TbSend,
+} from 'react-icons/tb';
 
 import Spinner from '../ui/Spinner';
 import useForm from '../../hooks/useForm';
@@ -9,7 +11,6 @@ import { useUI } from '../../context';
 import { subscribeEmail, fetchSubscriberCount } from '../../api/services';
 import { validateSubscribe } from '../../utils/validators';
 import { fadeUp, stagger, viewportOnce } from '../../utils/motion';
-import { cn } from '../../utils/helpers';
 
 const PERKS = [
   'New project launches & case studies',
@@ -22,10 +23,11 @@ export default function Subscribe() {
   const [done, setDone] = useState(false);
   const [count, setCount] = useState(null);
 
-  const { values, errors, touched, isSubmitting, handleChange, handleBlur, handleSubmit, setErrors, reset } =
-    useForm({ email: '', website: '' }, validateSubscribe);
+  const {
+    values, errors, touched, isSubmitting,
+    handleChange, handleBlur, handleSubmit, setErrors, reset,
+  } = useForm({ email: '', website: '' }, validateSubscribe);
 
-  /* Optional social proof — silently skipped when the API is unreachable. */
   useEffect(() => {
     let cancelled = false;
     fetchSubscriberCount()
@@ -38,10 +40,15 @@ export default function Subscribe() {
     const toastId = toast.loading('Subscribing…');
     try {
       const res = await subscribeEmail(data.email, 'portfolio-newsletter');
-      toast.success(res.message || "You're subscribed!", { id: toastId, duration: 5000 });
+      toast.success(res.message || "You're subscribed!", {
+        id: toastId,
+        duration: 5000,
+      });
       markSubscribed();
       setDone(true);
-      setCount((c) => (typeof c === 'number' && !res?.data?.alreadySubscribed ? c + 1 : c));
+      setCount((c) =>
+        typeof c === 'number' && !res?.data?.alreadySubscribed ? c + 1 : c
+      );
       reset();
     } catch (err) {
       toast.error(err.message, { id: toastId });
@@ -52,7 +59,11 @@ export default function Subscribe() {
   const showError = Boolean(errors.email && touched.email);
 
   return (
-    <section id="subscribe" className="section !py-16 md:!py-20" aria-labelledby="subscribe-heading">
+    <section
+      id="subscribe"
+      className="section !py-16 md:!py-20"
+      aria-labelledby="subscribe-heading"
+    >
       <div className="container-x">
         <motion.div
           variants={stagger(0.1)}
@@ -62,10 +73,40 @@ export default function Subscribe() {
           className="card card-gradient-edge relative overflow-hidden p-7 sm:p-10 lg:p-12"
         >
           {/* Decorative background */}
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
-            <div className="absolute -left-20 -top-24 size-72 rounded-full bg-primary/16 blur-[90px]" />
-            <div className="absolute -bottom-28 -right-16 size-72 rounded-full bg-secondary/16 blur-[90px]" />
-            <div className="absolute inset-0 grid-bg opacity-45" />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 -z-10"
+          >
+            <div
+              className="absolute -left-20 -top-24 rounded-full"
+              style={{
+                width: '18rem',
+                height: '18rem',
+                background:
+                  'radial-gradient(circle, rgba(108,99,255,0.16) 0%, transparent 70%)',
+                filter: 'blur(60px)',
+              }}
+            />
+            <div
+              className="absolute -bottom-28 -right-16 rounded-full"
+              style={{
+                width: '18rem',
+                height: '18rem',
+                background:
+                  'radial-gradient(circle, rgba(255,101,132,0.16) 0%, transparent 70%)',
+                filter: 'blur(60px)',
+              }}
+            />
+            <div
+              className="absolute inset-0 opacity-30"
+              style={{
+                backgroundImage: `
+                  linear-gradient(to right, rgba(108,99,255,0.06) 1px, transparent 1px),
+                  linear-gradient(to bottom, rgba(108,99,255,0.06) 1px, transparent 1px)
+                `,
+                backgroundSize: '40px 40px',
+              }}
+            />
           </div>
 
           <div className="grid items-center gap-9 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
@@ -80,28 +121,65 @@ export default function Subscribe() {
                 id="subscribe-heading"
                 variants={fadeUp}
                 className="text-3xl font-extrabold leading-tight sm:text-4xl"
+                style={{ color: 'var(--text)' }}
               >
-                Stay <span className="gradient-text">Updated</span>
+                Stay{' '}
+                <span className="gradient-text">Updated</span>
               </motion.h2>
 
-              <motion.p variants={fadeUp} className="mt-4 max-w-md text-[0.9375rem] leading-relaxed text-muted">
-                Subscribe to get updates on new projects, services and tech insights. No spam, no
-                filler — unsubscribe in one click whenever you like.
+              <motion.p
+                variants={fadeUp}
+                className="mt-4 max-w-md text-[0.9375rem] leading-relaxed"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                Subscribe to get updates on new projects, services and tech
+                insights. No spam — unsubscribe in one click.
               </motion.p>
 
-              <motion.ul variants={stagger(0.07)} className="mt-6 space-y-2.5">
+              <motion.ul
+                variants={stagger(0.07)}
+                className="mt-6 space-y-2.5"
+              >
                 {PERKS.map((perk) => (
-                  <motion.li key={perk} variants={fadeUp} className="flex items-center gap-2.5 text-[0.875rem] text-content/85">
-                    <TbCircleCheck size={16} className="shrink-0 text-success" aria-hidden="true" />
+                  <motion.li
+                    key={perk}
+                    variants={fadeUp}
+                    className="flex items-center gap-2.5 text-[0.875rem]"
+                    style={{ color: 'var(--text)', opacity: 0.85 }}
+                  >
+                    <TbCircleCheck
+                      size={16}
+                      className="shrink-0"
+                      style={{ color: 'var(--accent)' }}
+                      aria-hidden="true"
+                    />
                     {perk}
                   </motion.li>
                 ))}
               </motion.ul>
 
               {typeof count === 'number' && count > 0 && (
-                <motion.p variants={fadeUp} className="mt-6 inline-flex items-center gap-2 rounded-full border border-line bg-surface/60 px-3.5 py-1.5 text-xs text-muted">
-                  <TbUsers size={14} className="text-primary" aria-hidden="true" />
-                  <strong className="tabular-nums text-content">{count.toLocaleString()}</strong>
+                <motion.p
+                  variants={fadeUp}
+                  className="mt-6 inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs"
+                  style={{
+                    background:
+                      'color-mix(in oklab, var(--surface) 60%, transparent)',
+                    borderColor: 'var(--border)',
+                    color: 'var(--text-muted)',
+                  }}
+                >
+                  <TbUsers
+                    size={14}
+                    style={{ color: 'var(--primary)' }}
+                    aria-hidden="true"
+                  />
+                  <strong
+                    className="tabular-nums"
+                    style={{ color: 'var(--text)' }}
+                  >
+                    {count.toLocaleString()}
+                  </strong>
                   {count === 1 ? 'developer subscribed' : 'developers subscribed'}
                 </motion.p>
               )}
@@ -116,26 +194,47 @@ export default function Subscribe() {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="rounded-2xl border border-success/25 bg-success/8 p-7 text-center"
+                    className="rounded-2xl border p-7 text-center"
+                    style={{
+                      background: 'rgba(67,233,123,0.08)',
+                      borderColor: 'rgba(67,233,123,0.25)',
+                    }}
                   >
                     <motion.span
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      transition={{ type: 'spring', stiffness: 280, damping: 15, delay: 0.1 }}
-                      className="mx-auto grid size-14 place-items-center rounded-2xl bg-success/15 text-success"
+                      transition={{
+                        type: 'spring',
+                        stiffness: 280,
+                        damping: 15,
+                        delay: 0.1,
+                      }}
+                      className="mx-auto grid size-14 place-items-center rounded-2xl"
+                      style={{
+                        background: 'rgba(67,233,123,0.15)',
+                        color: 'var(--accent)',
+                      }}
                     >
                       <TbCircleCheck size={30} aria-hidden="true" />
                     </motion.span>
-                    <h3 className="mt-5 text-lg font-bold">You're on the list! 🎯</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-muted">
-                      Check your inbox for a welcome email. If it isn't there in a minute, take a
-                      look in your spam folder.
+                    <h3
+                      className="mt-5 text-lg font-bold"
+                      style={{ color: 'var(--text)' }}
+                    >
+                      You're on the list! 🎯
+                    </h3>
+                    <p
+                      className="mt-2 text-sm leading-relaxed"
+                      style={{ color: 'var(--text-muted)' }}
+                    >
+                      Check your inbox for a welcome email.
                     </p>
                     {done && (
                       <button
                         type="button"
                         onClick={() => setDone(false)}
-                        className="mt-5 text-xs font-semibold text-primary-soft underline-offset-4 hover:underline"
+                        className="mt-5 text-xs font-semibold underline-offset-4 hover:underline"
+                        style={{ color: 'var(--primary-soft)' }}
                       >
                         Subscribe another email
                       </button>
@@ -149,18 +248,29 @@ export default function Subscribe() {
                     exit={{ opacity: 0 }}
                     onSubmit={onSubmit}
                     noValidate
-                    className="rounded-2xl border border-line bg-background/45 p-6 backdrop-blur"
+                    className="rounded-2xl border p-6 backdrop-blur"
+                    style={{
+                      background:
+                        'color-mix(in oklab, var(--bg) 45%, transparent)',
+                      borderColor: 'var(--border)',
+                    }}
                     aria-label="Newsletter subscription form"
                   >
-                    <label htmlFor="subscribe-email" className="field-label">
+                    <label
+                      htmlFor="subscribe-email"
+                      className="field-label"
+                    >
                       Your email address
                     </label>
 
                     {/* Honeypot */}
                     <div className="absolute left-[-9999px]" aria-hidden="true">
                       <input
-                        name="website" tabIndex={-1} autoComplete="off"
-                        value={values.website} onChange={handleChange}
+                        name="website"
+                        tabIndex={-1}
+                        autoComplete="off"
+                        value={values.website}
+                        onChange={handleChange}
                       />
                     </div>
 
@@ -168,7 +278,8 @@ export default function Subscribe() {
                       <div className="relative flex-1">
                         <TbMail
                           size={17}
-                          className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted"
+                          className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2"
+                          style={{ color: 'var(--text-muted)' }}
                           aria-hidden="true"
                         />
                         <input
@@ -182,16 +293,28 @@ export default function Subscribe() {
                           onBlur={handleBlur}
                           disabled={isSubmitting}
                           aria-invalid={showError || undefined}
-                          aria-describedby={showError ? 'subscribe-error' : undefined}
-                          className={cn('field !pl-10', showError && 'field-error')}
+                          aria-describedby={
+                            showError ? 'subscribe-error' : undefined
+                          }
+                          className={`field !pl-10 ${showError ? 'field-error' : ''}`}
                         />
                       </div>
 
-                      <button type="submit" disabled={isSubmitting} className="btn btn-primary shrink-0 !px-6">
+                      <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="btn btn-primary shrink-0 !px-6"
+                      >
                         {isSubmitting ? (
-                          <><Spinner size={16} label="Subscribing" /> Sending…</>
+                          <>
+                            <Spinner size={16} label="Subscribing" />
+                            Sending…
+                          </>
                         ) : (
-                          <><TbSend size={16} aria-hidden="true" /> Subscribe</>
+                          <>
+                            <TbSend size={16} aria-hidden="true" />
+                            Subscribe
+                          </>
                         )}
                       </button>
                     </div>
@@ -211,9 +334,11 @@ export default function Subscribe() {
                       )}
                     </AnimatePresence>
 
-                    <p className="mt-3.5 text-[0.6875rem] leading-relaxed text-muted">
-                      By subscribing you agree to receive occasional emails. Your address is never
-                      sold or shared, and every email includes a one-click unsubscribe link.
+                    <p
+                      className="mt-3.5 text-[0.6875rem] leading-relaxed"
+                      style={{ color: 'var(--text-muted)' }}
+                    >
+                      No spam. Unsubscribe anytime with one click.
                     </p>
                   </motion.form>
                 )}
