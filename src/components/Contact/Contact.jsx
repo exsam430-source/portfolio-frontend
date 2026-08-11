@@ -52,20 +52,39 @@ const buildSocials = (profile) => [
   { id: 'phone', icon: TbPhone, label: 'Phone', href: profile.socials.phone },
 ];
 
+/* ⚠️ FIXED: Safe WhatsApp message builder with fallback */
 const buildWhatsAppMessage = (contact) => {
+  if (!contact) return '';
+
+  const name = contact.name || 'Unknown';
+  const email = contact.email || '';
+  const subject = contact.subject || 'No subject';
+  const message = contact.message || 'No message';
+
   const lines = [
-    `📬 *New Contact Message*`, ``,
+    `📬 *New Contact Message*`,
+    ``,
     `👤 *From*`,
-    `• Name: ${contact.name}`,
-    `• Email: ${contact.email}`, ``,
-    `📌 *Subject*`, contact.subject, ``,
-    `💬 *Message*`, contact.message,
+    `• Name: ${name}`,
+    `• Email: ${email}`,
+    ``,
+    `📌 *Subject*`,
+    subject,
+    ``,
+    `💬 *Message*`,
+    message,
   ];
   return encodeURIComponent(lines.join('\n'));
 };
 
+/* ⚠️ FIXED: Safe WhatsApp opener with validation */
 const openWhatsApp = (contact) => {
-  const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${buildWhatsAppMessage(contact)}`;
+  if (!contact) {
+    console.warn('No contact data to send to WhatsApp');
+    return;
+  }
+  const message = buildWhatsAppMessage(contact);
+  const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
   window.open(url, '_blank', 'noopener,noreferrer');
 };
 
@@ -85,11 +104,21 @@ export default function Contact() {
     const toastId = toast.loading('Sending your message…');
     try {
       const res = await submitContact(data);
-      const contact = res?.data;
-      toast.success(res.message || 'Message sent!', { id: toastId, duration: 4000 });
+
+      /* ⚠️ FIXED: Always use form data as fallback if API response missing fields */
+      const contact = {
+        name: res?.data?.name || data.name,
+        email: res?.data?.email || data.email,
+        subject: res?.data?.subject || data.subject,
+        message: res?.data?.message || data.message,
+      };
+
+      toast.success(res?.message || 'Message sent!', { id: toastId, duration: 4000 });
       setSentContact(contact);
       setSent(true);
       reset();
+
+      /* Open WhatsApp with guaranteed data */
       setTimeout(() => openWhatsApp(contact), 1500);
     } catch (err) {
       toast.error(err.message, { id: toastId });
@@ -111,13 +140,14 @@ export default function Contact() {
   return (
     <section
       id="contact"
-      className="section relative overflow-hidden"
+      className="section relative"
+      style={{ overflow: 'visible' }}
       aria-labelledby="contact-heading"
     >
-      {/* Ambient glow */}
+      {/* Ambient glow - desktop only */}
       <div
-  aria-hidden="true"
-  className="pointer-events-none absolute bottom-0 left-1/2 -z-10 -translate-x-1/2 rounded-full hidden md:block"
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-0 left-1/2 -z-10 -translate-x-1/2 rounded-full hidden md:block"
         style={{
           width: '38rem',
           height: '38rem',
@@ -137,7 +167,7 @@ export default function Contact() {
         <h2 id="contact-heading" className="sr-only">Contact</h2>
 
         <div className="mt-14 grid gap-8 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-          {/* ── Info column ── */}
+          {/* Info column */}
           <motion.div
             variants={stagger(0.1)}
             initial="hidden"
@@ -182,9 +212,7 @@ export default function Contact() {
                       {card.href ? (
                         <a
                           href={card.href}
-                          target={
-                            card.href.startsWith('http') ? '_blank' : undefined
-                          }
+                          target={card.href.startsWith('http') ? '_blank' : undefined}
                           rel="noreferrer noopener"
                           className="flex flex-1 items-center gap-4"
                         >
@@ -204,14 +232,6 @@ export default function Contact() {
                           style={{
                             borderColor: 'var(--border)',
                             color: 'var(--text-muted)',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.borderColor = 'var(--primary)';
-                            e.currentTarget.style.color = 'var(--primary)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.borderColor = 'var(--border)';
-                            e.currentTarget.style.color = 'var(--text-muted)';
                           }}
                         >
                           <TbCopy size={15} />
@@ -241,7 +261,7 @@ export default function Contact() {
                 Follow my work or connect professionally.
               </p>
 
-              <ul className="mt-5 flex gap-2.5">
+              <ul className="mt-5 flex gap-2.5 flex-wrap">
                 {SOCIALS.map(({ id, icon: Icon, label, href }) => (
                   <li key={id}>
                     <a
@@ -257,28 +277,12 @@ export default function Contact() {
                         borderColor: 'var(--border)',
                         color: 'var(--text-muted)',
                       }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--primary)';
-                        e.currentTarget.style.color = 'var(--primary)';
-                        e.currentTarget.style.boxShadow =
-                          '0 0 15px rgba(108,99,255,0.4)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--border)';
-                        e.currentTarget.style.color = 'var(--text-muted)';
-                        e.currentTarget.style.boxShadow = 'none';
-                      }}
                     >
-                      <Icon
-                        size={19}
-                        className="transition-transform duration-300 group-hover:scale-110"
-                        aria-hidden="true"
-                      />
+                      <Icon size={19} aria-hidden="true" />
                     </a>
                   </li>
                 ))}
 
-                {/* WhatsApp */}
                 <li>
                   <a
                     href={`https://wa.me/${WHATSAPP_NUMBER}`}
@@ -292,29 +296,12 @@ export default function Contact() {
                       borderColor: 'var(--border)',
                       color: 'var(--text-muted)',
                     }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor =
-                        'rgba(37,211,102,0.55)';
-                      e.currentTarget.style.color = '#25D366';
-                      e.currentTarget.style.boxShadow =
-                        '0 0 15px rgba(37,211,102,0.3)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--border)';
-                      e.currentTarget.style.color = 'var(--text-muted)';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
                   >
-                    <TbBrandWhatsapp
-                      size={19}
-                      className="transition-transform duration-300 group-hover:scale-110"
-                      aria-hidden="true"
-                    />
+                    <TbBrandWhatsapp size={19} aria-hidden="true" />
                   </a>
                 </li>
               </ul>
 
-              {/* Available status */}
               <div
                 className="mt-6 flex items-center gap-2.5 rounded-xl border px-4 py-3"
                 style={{
@@ -342,7 +329,7 @@ export default function Contact() {
             </motion.div>
           </motion.div>
 
-          {/* ── Form column ── */}
+          {/* Form column */}
           <motion.div
             variants={slideRight}
             initial="hidden"
@@ -436,7 +423,6 @@ export default function Contact() {
                     Fields marked with * are required.
                   </p>
 
-                  {/* Honeypot */}
                   <div
                     className="absolute left-[-9999px] top-0"
                     aria-hidden="true"

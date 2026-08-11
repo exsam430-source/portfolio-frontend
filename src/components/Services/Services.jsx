@@ -18,21 +18,22 @@ export default function Services() {
   return (
     <section
       id="services"
-      className="section relative overflow-hidden"
+      className="section relative"
+      style={{ overflow: 'visible' }}
       aria-labelledby="services-heading"
     >
-      {/* Ambient glow */}
+      {/* Ambient glow - desktop only */}
       <div
-  aria-hidden="true"
-  className="pointer-events-none absolute right-0 top-1/3 -z-10 rounded-full hidden md:block"
-  style={{
-    width: '32rem',
-    height: '32rem',
-    background:
-      'radial-gradient(circle, rgba(108,99,255,0.08) 0%, transparent 70%)',
-    filter: 'blur(80px)',
-  }}
-/>
+        aria-hidden="true"
+        className="pointer-events-none absolute right-0 top-1/3 -z-10 rounded-full hidden md:block"
+        style={{
+          width: '32rem',
+          height: '32rem',
+          background:
+            'radial-gradient(circle, rgba(108,99,255,0.08) 0%, transparent 70%)',
+          filter: 'blur(80px)',
+        }}
+      />
 
       <div className="container-x">
         <SectionHeading
@@ -43,21 +44,18 @@ export default function Services() {
         />
         <h2 id="services-heading" className="sr-only">Services offered</h2>
 
-        <motion.ul
-          variants={stagger(0.08)}
-          initial="hidden"
-          whileInView="visible"
-          viewport={viewportOnce}
-          className="mt-14 grid gap-5 md:grid-cols-2 xl:grid-cols-3"
-        >
-          {services.map((service) => {
+        {/* ⚠️ FIXED: removed motion wrapper, use plain ul */}
+        <ul className="mt-14 grid gap-5 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
+          {services.map((service, i) => {
             const Icon = service.icon;
             return (
               <motion.li
                 key={service.id}
-                variants={fadeUp}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-50px' }}
+                transition={{ duration: 0.5, delay: i * 0.08 }}
                 whileHover={{ y: -8 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 24 }}
                 className="card card-gradient-edge group relative flex flex-col overflow-hidden p-6"
               >
                 {/* Hover wash */}
@@ -75,13 +73,6 @@ export default function Services() {
                     style={{
                       background: `${service.accent}1a`,
                       color: service.accent,
-                      boxShadow: `0 0 0 0 ${service.accent}00`,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.boxShadow = `0 0 20px ${service.accent}40`;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.boxShadow = `0 0 0 0 ${service.accent}00`;
                     }}
                   >
                     <Icon size={24} aria-hidden="true" />
@@ -123,30 +114,24 @@ export default function Services() {
                 <button
                   type="button"
                   onClick={() => order(service.serviceType)}
-                  className="btn btn-ghost relative mt-6 w-full"
-                  style={{ marginTop: 'auto', paddingTop: '1.5rem' }}
+                  className="btn btn-ghost w-full mt-auto"
+                  style={{ marginTop: '1.5rem' }}
                   aria-label={`Order ${service.title}`}
                 >
-                  <span className="flex items-center justify-center gap-2 group-hover:gap-3 transition-all">
-                    Order Now
-                    <TbArrowRight
-                      size={16}
-                      className="transition-transform duration-300 group-hover:translate-x-1"
-                      aria-hidden="true"
-                    />
-                  </span>
+                  Order Now
+                  <TbArrowRight size={16} aria-hidden="true" />
                 </button>
               </motion.li>
             );
           })}
-        </motion.ul>
+        </ul>
 
         {/* Bottom CTA */}
         <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          whileInView="visible"
-          viewport={viewportOnce}
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
           className="card card-gradient-edge mt-8 flex flex-col items-center gap-5 p-7 text-center sm:flex-row sm:justify-between sm:text-left"
         >
           <div className="flex items-center gap-4">

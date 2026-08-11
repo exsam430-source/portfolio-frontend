@@ -4,1497 +4,687 @@ import { useProfile } from '../../context';
 
 export default function F1Loader({ onComplete }) {
   const profile = useProfile();
-  const [phase, setPhase] = useState('car');
+  const [phase, setPhase] = useState('boot');
   const [progress, setProgress] = useState(0);
+  const [terminalLines, setTerminalLines] = useState([]);
+  const [fingerprintProgress, setFingerprintProgress] = useState(0);
   const audioRef = useRef(null);
-  const [audioLoaded, setAudioLoaded] = useState(false);
+  const canvasRef = useRef(null);
 
-  /* ── Audio Setup ── */
-useEffect(() => {
-  const reduceMotion =
-    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  if (reduceMotion) {
-    onComplete();
-    return;
-  }
+  const bootLogs = [
+    { text: '> System.init()', color: '#6c63ff' },
+    { text: '> Loading neural.network v2.0...', color: '#6c63ff' },
+    { text: '> Establishing quantum connections...', color: '#6c63ff' },
+    { text: '> Analyzing biometric data...', color: '#ff6584' },
+    { text: '> Scanning fingerprint... [MATCH]', color: '#43e97b' },
+    { text: '> Loading personality module...', color: '#6c63ff' },
+    { text: '> Compiling skills: React, Node.js, MongoDB', color: '#6c63ff' },
+    { text: '> Rendering holographic interface...', color: '#6c63ff' },
+    { text: '> [✓] IDENTITY VERIFIED', color: '#43e97b' },
+    { text: '> [✓] ACCESS GRANTED', color: '#43e97b' },
+  ];
 
-  try {
-    /* Create audio with muted initial state (bypasses autoplay block) */
-    const audio = new Audio('/sounds/bmw-engine.mp3');
-    audio.volume = 0.35;
-    audio.loop = true;
-    audio.muted = false;
-    audio.preload = 'auto';
-    audioRef.current = audio;
+  /* ── Audio ── */
+  useEffect(() => {
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) { onComplete(); return; }
 
-    /* Multiple event listeners for cross-browser support */
-    audio.addEventListener('canplaythrough', () => {
-      setAudioLoaded(true);
-    });
-
-    audio.addEventListener('loadeddata', () => {
-      setAudioLoaded(true);
-    });
-
-    audio.addEventListener('error', (e) => {
-      console.warn('Audio load error:', e);
-      setAudioLoaded(false);
-    });
-
-    /* Try to play immediately (may fail due to autoplay policy) */
-    const attemptAutoplay = async () => {
-      try {
-        await audio.play();
-        setAudioLoaded(true);
-        console.log('✅ Audio autoplay successful');
-      } catch (err) {
-        console.warn('⚠️ Autoplay blocked — waiting for user interaction');
-        setAudioLoaded(false);
-
-        /* Set up listeners to play on ANY user interaction */
-        const playOnInteraction = async () => {
-          try {
-            await audio.play();
-            setAudioLoaded(true);
-            console.log('✅ Audio started after interaction');
-
-            /* Remove listeners once audio is playing */
-            document.removeEventListener('click', playOnInteraction);
-            document.removeEventListener('touchstart', playOnInteraction);
-            document.removeEventListener('keydown', playOnInteraction);
-            document.removeEventListener('scroll', playOnInteraction);
-            document.removeEventListener('mousemove', playOnInteraction);
-          } catch (playErr) {
-            console.warn('Audio play failed:', playErr);
-          }
+    try {
+      const audio = new Audio('/sounds/bmw-engine.mp3');
+      audio.volume = 0.2;
+      audio.loop = true;
+      audioRef.current = audio;
+      audio.play().catch(() => {
+        const playOnInteraction = () => {
+          audio.play().catch(() => {});
+          document.removeEventListener('click', playOnInteraction);
+          document.removeEventListener('touchstart', playOnInteraction);
         };
-
-        /* Listen for ANY user interaction */
         document.addEventListener('click', playOnInteraction, { once: true });
         document.addEventListener('touchstart', playOnInteraction, { once: true });
-        document.addEventListener('keydown', playOnInteraction, { once: true });
-        document.addEventListener('scroll', playOnInteraction, { once: true });
-        document.addEventListener('mousemove', playOnInteraction, { once: true });
-      }
+      });
+    } catch {}
+
+    return () => {
+      if (audioRef.current) audioRef.current.pause();
+    };
+  }, []);
+
+  /* ── Matrix Rain ── */
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノ<>{}[]()/*+=';
+    const fontSize = 14;
+    const columns = Math.floor(canvas.width / fontSize);
+    const drops = Array(columns).fill(1);
+
+    const draw = () => {
+      ctx.fillStyle = 'rgba(5,8,22,0.05)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      drops.forEach((y, i) => {
+        const text = chars[Math.floor(Math.random() * chars.length)];
+        const gradient = ctx.createLinearGradient(0, y * fontSize - 100, 0, y * fontSize);
+        gradient.addColorStop(0, 'transparent');
+        gradient.addColorStop(0.5, 'rgba(108,99,255,0.5)');
+        gradient.addColorStop(1, '#43e97b');
+        ctx.fillStyle = gradient;
+        ctx.font = `${fontSize}px monospace`;
+        ctx.fillText(text, i * fontSize, y * fontSize);
+
+        if (y * fontSize > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+        drops[i]++;
+      });
     };
 
-    attemptAutoplay();
-  } catch (err) {
-    console.warn('Audio setup failed:', err);
-    setAudioLoaded(false);
-  }
+    const interval = setInterval(draw, 40);
+    return () => clearInterval(interval);
+  }, []);
 
-  return () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current = null;
-    }
-  };
-}, []);
-
-  /* ── Phase Management ── */
+  /* ── Phases ── */
   useEffect(() => {
-    const reduceMotion =
-      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    if (reduceMotion) {
-      onComplete();
-      return;
-    }
+    const TOTAL = 6500;
 
-    const CAR_DURATION = 6000;
+    bootLogs.forEach((line, i) => {
+      setTimeout(() => setTerminalLines((prev) => [...prev, line]), i * 250);
+    });
 
-    const carTimer = setTimeout(() => {
-      setPhase('reveal');
+    const t1 = setTimeout(() => setPhase('network'), 1500);
+    const t2 = setTimeout(() => setPhase('activation'), 4200);
+    const t3 = setTimeout(() => setPhase('reveal'), 5000);
+    const t4 = setTimeout(() => {
+      setPhase('done');
+      if (audioRef.current) audioRef.current.pause();
+      setTimeout(onComplete, 700);
+    }, TOTAL);
 
-      if (audioRef.current) {
-        const fadeOut = setInterval(() => {
-          if (audioRef.current && audioRef.current.volume > 0.02) {
-            audioRef.current.volume = Math.max(
-              0,
-              audioRef.current.volume - 0.03
-            );
-          } else {
-            clearInterval(fadeOut);
-            if (audioRef.current) audioRef.current.pause();
-          }
-        }, 40);
-      }
-    }, CAR_DURATION + 200);
+    /* Fingerprint scan */
+    let fpInterval = setInterval(() => {
+      setFingerprintProgress((p) => Math.min(100, p + 2));
+    }, 40);
+    setTimeout(() => clearInterval(fpInterval), 2500);
 
     let frame;
     const start = performance.now();
     const tick = (now) => {
-      const pct = Math.min(100, ((now - start) / CAR_DURATION) * 100);
+      const pct = Math.min(100, ((now - start) / TOTAL) * 100);
       setProgress(pct);
-
-      if (audioRef.current) {
-        try {
-          audioRef.current.playbackRate = 0.85 + (pct / 100) * 0.45;
-          audioRef.current.volume = Math.min(
-            0.55,
-            0.25 + (pct / 100) * 0.3
-          );
-        } catch {}
-      }
-
       if (pct < 100) frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
 
     return () => {
-      clearTimeout(carTimer);
+      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4);
+      clearInterval(fpInterval);
       cancelAnimationFrame(frame);
     };
   }, []);
 
-  useEffect(() => {
-    if (phase === 'reveal') {
-      const t = setTimeout(() => {
-        setPhase('done');
-        setTimeout(onComplete, 500);
-      }, 1500);
-      return () => clearTimeout(t);
-    }
-  }, [phase, onComplete]);
+  const nodes = [
+    { id: 1, x: 50, y: 15 },
+    { id: 2, x: 20, y: 35 }, { id: 3, x: 40, y: 35 }, { id: 4, x: 60, y: 35 }, { id: 5, x: 80, y: 35 },
+    { id: 6, x: 10, y: 55 }, { id: 7, x: 30, y: 55 }, { id: 8, x: 50, y: 55 }, { id: 9, x: 70, y: 55 }, { id: 10, x: 90, y: 55 },
+    { id: 11, x: 25, y: 75 }, { id: 12, x: 50, y: 75 }, { id: 13, x: 75, y: 75 },
+    { id: 14, x: 50, y: 90 },
+  ];
+
+  const connections = [
+    [1, 2], [1, 3], [1, 4], [1, 5],
+    [2, 6], [2, 7], [3, 7], [3, 8], [4, 8], [4, 9], [5, 9], [5, 10],
+    [6, 11], [7, 11], [7, 12], [8, 12], [9, 12], [9, 13], [10, 13],
+    [11, 14], [12, 14], [13, 14],
+  ];
 
   return (
     <AnimatePresence>
       {phase !== 'done' && (
         <motion.div
-  key="sports-loader"
-  exit={{ opacity: 0, scale: 1.08 }}
-  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-  className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden cursor-pointer"
-  style={{ background: '#050816' }}
-  onClick={async () => {
-    if (audioRef.current) {
-      try {
-        if (audioRef.current.paused) {
-          await audioRef.current.play();
-          setAudioLoaded(true);
-        }
-      } catch (err) {
-        console.warn('Manual play failed:', err);
-      }
-    }
-  }}
-  onTouchStart={async () => {
-    if (audioRef.current && audioRef.current.paused) {
-      try {
-        await audioRef.current.play();
-        setAudioLoaded(true);
-      } catch {}
-    }
-  }}
->
+          key="neural-insane"
+          exit={{ opacity: 0, filter: 'blur(30px)' }}
+          transition={{ duration: 0.7 }}
+          className="fixed inset-0 z-[100] overflow-hidden"
+          style={{ background: '#050816' }}
+        >
+          {/* ═══ MATRIX RAIN ═══ */}
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0"
+            style={{ opacity: 0.3, mixBlendMode: 'screen' }}
+          />
 
-          {/* Stars */}
-          <div className="absolute inset-0 overflow-hidden">
-            {Array.from({ length: 120 }).map((_, i) => (
-              <div
-                key={i}
-                className="absolute rounded-full bg-white"
-                style={{
-                  width: Math.random() * 2 + 0.5 + 'px',
-                  height: Math.random() * 2 + 0.5 + 'px',
-                  top: Math.random() * 100 + '%',
-                  left: Math.random() * 100 + '%',
-                  opacity: Math.random() * 0.5 + 0.1,
-                  animation: `blink ${Math.random() * 4 + 1}s ease-in-out infinite`,
-                  animationDelay: Math.random() * 3 + 's',
-                }}
-              />
-            ))}
-          </div>
-
-          {/* Grid */}
+          {/* ═══ GRID ═══ */}
           <div
-            className="absolute inset-0 opacity-10"
+            className="absolute inset-0"
             style={{
               backgroundImage: `
-                linear-gradient(to right, rgba(108,99,255,0.4) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(108,99,255,0.4) 1px, transparent 1px)
+                linear-gradient(to right, rgba(108,99,255,0.1) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(108,99,255,0.1) 1px, transparent 1px)
               `,
-              backgroundSize: '80px 80px',
+              backgroundSize: '50px 50px',
             }}
           />
 
-          {/* Center glow */}
-          <div
-            className="absolute rounded-full"
+          {/* ═══ SCAN LINES (multiple) ═══ */}
+          <motion.div
+            className="absolute left-0 right-0 h-[2px]"
             style={{
-              width: '800px',
-              height: '800px',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              background:
-                'radial-gradient(circle, rgba(108,99,255,0.1) 0%, rgba(255,101,132,0.05) 40%, transparent 70%)',
+              background: 'linear-gradient(90deg, transparent, #6c63ff, transparent)',
+              boxShadow: '0 0 20px #6c63ff',
             }}
+            animate={{ top: ['0%', '100%'] }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+          />
+          <motion.div
+            className="absolute top-0 bottom-0 w-[2px]"
+            style={{
+              background: 'linear-gradient(180deg, transparent, #ff6584, transparent)',
+              boxShadow: '0 0 20px #ff6584',
+            }}
+            animate={{ left: ['0%', '100%'] }}
+            transition={{ duration: 4, repeat: Infinity, ease: 'linear', delay: 0.5 }}
           />
 
-          {phase === 'car' && (
-            <>
-              <div
-                className="relative w-full flex items-end justify-center"
-                style={{ height: '380px' }}
+          {/* ═══ CORNER BRACKETS (HUD) ═══ */}
+          {[
+            { top: '20px', left: '20px', rotate: 0 },
+            { top: '20px', right: '20px', rotate: 90 },
+            { bottom: '20px', left: '20px', rotate: 270 },
+            { bottom: '20px', right: '20px', rotate: 180 },
+          ].map((pos, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.1 }}
+              className="absolute"
+              style={{
+                ...pos,
+                width: '50px',
+                height: '50px',
+                borderTop: '2px solid #6c63ff',
+                borderLeft: '2px solid #6c63ff',
+                transform: `rotate(${pos.rotate}deg)`,
+                boxShadow: '0 0 15px rgba(108,99,255,0.5)',
+              }}
+            />
+          ))}
+
+          {/* ═══ TOP HUD BAR ═══ */}
+          <motion.div
+            initial={{ y: -50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="absolute top-16 left-1/2 -translate-x-1/2 flex items-center gap-4 px-4 py-1.5 rounded-full text-[0.6rem] font-mono uppercase tracking-widest"
+            style={{
+              background: 'rgba(108,99,255,0.1)',
+              border: '1px solid rgba(108,99,255,0.4)',
+              color: '#6c63ff',
+            }}
+          >
+            <span>SYS v2.0</span>
+            <span>|</span>
+            <span>MERN_STACK</span>
+            <span>|</span>
+            <motion.span animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1, repeat: Infinity }}>
+              [LIVE]
+            </motion.span>
+          </motion.div>
+
+          {/* ═══ TERMINAL ═══ */}
+          <div
+            className="absolute rounded-lg p-4 font-mono text-xs"
+            style={{
+              top: '80px',
+              left: '20px',
+              background: 'rgba(10,15,30,0.9)',
+              border: '1px solid rgba(108,99,255,0.4)',
+              minWidth: '260px',
+              maxWidth: '380px',
+              boxShadow: '0 0 30px rgba(108,99,255,0.2)',
+              backdropFilter: 'blur(10px)',
+              maxHeight: '280px',
+              overflow: 'hidden',
+            }}
+          >
+            <div className="flex items-center gap-2 mb-3 pb-2" style={{ borderBottom: '1px solid rgba(108,99,255,0.2)' }}>
+              <span className="size-2 rounded-full" style={{ background: '#ff5555' }} />
+              <span className="size-2 rounded-full" style={{ background: '#ffcc00' }} />
+              <span className="size-2 rounded-full" style={{ background: '#43e97b' }} />
+              <span className="ml-2 text-[0.6rem] uppercase tracking-widest" style={{ color: 'rgba(108,99,255,0.7)' }}>
+                neural_boot.sys
+              </span>
+            </div>
+            {terminalLines.map((line, i) => (
+              <motion.p
+                key={i}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="mb-1 text-[0.7rem]"
+                style={{ color: line.color }}
               >
-                {/* City Skyline */}
-                <div
-                  className="absolute w-full opacity-15"
-                  style={{ bottom: '90px' }}
-                >
-                  <svg
-                    viewBox="0 0 1200 120"
-                    fill="none"
-                    className="w-full"
-                    preserveAspectRatio="none"
-                    style={{ height: '100px' }}
-                  >
-                    <path
-                      d="M0 120 L0 80 L25 80 L25 50 L45 50 L45 65 L70 65 L70 35 L90 35 L90 55 L110 55 L110 25 L130 25 L130 50 L155 50 L155 30 L175 30 L175 70 L200 70 L200 40 L230 40 L230 55 L260 55 L260 20 L290 20 L290 45 L320 45 L320 75 L350 75 L350 35 L380 35 L380 60 L410 60 L410 25 L440 25 L440 55 L470 55 L470 40 L500 40 L500 65 L530 65 L530 30 L560 30 L560 50 L590 50 L590 75 L620 75 L620 35 L650 35 L650 60 L680 60 L680 45 L710 45 L710 70 L740 70 L740 25 L770 25 L770 55 L800 55 L800 40 L830 40 L830 60 L860 60 L860 30 L890 30 L890 65 L920 65 L920 45 L950 45 L950 75 L980 75 L980 35 L1010 35 L1010 55 L1040 55 L1040 50 L1070 50 L1070 70 L1100 70 L1100 40 L1130 40 L1130 60 L1160 60 L1160 75 L1200 75 L1200 120Z"
-                      fill="rgba(108,99,255,0.25)"
-                    />
-                  </svg>
-                </div>
+                {line.text}
+              </motion.p>
+            ))}
+            {phase !== 'reveal' && (
+              <span className="animate-blink" style={{ color: '#6c63ff' }}>▊</span>
+            )}
+          </div>
 
-                {/* Road */}
-                <div
-                  className="absolute bottom-0 w-full"
-                  style={{ height: '90px' }}
-                >
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      background:
-                        'linear-gradient(to bottom, #12122a, #0a0a1a)',
-                    }}
-                  />
-                  <div
-                    className="absolute left-0 right-0 top-0"
-                    style={{
-                      height: '2px',
-                      background:
-                        'linear-gradient(90deg, transparent 5%, rgba(108,99,255,0.5) 30%, rgba(255,101,132,0.4) 70%, transparent 95%)',
-                      boxShadow:
-                        '0 0 8px rgba(108,99,255,0.4), 0 0 20px rgba(108,99,255,0.2)',
-                    }}
-                  />
-                  <div
-                    className="absolute left-0 right-0"
-                    style={{
-                      top: '45%',
-                      height: '3px',
-                      background:
-                        'repeating-linear-gradient(90deg, transparent, transparent 50px, rgba(255,255,255,0.2) 50px, rgba(255,255,255,0.2) 100px)',
-                      animation: 'road-move 0.5s linear infinite',
-                    }}
-                  />
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      background:
-                        'linear-gradient(to bottom, rgba(108,99,255,0.08), transparent 50%)',
-                    }}
-                  />
-                </div>
+          {/* ═══ FINGERPRINT SCANNER ═══ */}
+          <div
+            className="absolute rounded-lg p-4"
+            style={{
+              top: '80px',
+              right: '20px',
+              background: 'rgba(10,15,30,0.9)',
+              border: '1px solid rgba(108,99,255,0.4)',
+              width: '180px',
+              boxShadow: '0 0 30px rgba(108,99,255,0.2)',
+              backdropFilter: 'blur(10px)',
+            }}
+          >
+            <p className="text-[0.55rem] uppercase tracking-widest font-mono mb-3" style={{ color: 'rgba(108,99,255,0.7)' }}>
+              Biometric Scan
+            </p>
 
-                {/* ═══════════════════════════════════════
-                    PREMIUM SPORTS CAR - CUSTOM SVG
-                ═══════════════════════════════════════ */}
-                <motion.div
-                  initial={{ x: '-130%' }}
-                  animate={{ x: '130vw' }}
-                  transition={{
-                    duration: 6,
-                    ease: [0.4, 0.0, 0.6, 1.0],
-                  }}
-                  className="absolute z-20"
-                  style={{ bottom: '60px' }}
-                >
-                  <div className="relative">
-                    {/* ── Headlight beam ── */}
-                    <div
-                      className="absolute"
-                      style={{
-                        left: '100%',
-                        top: '35%',
-                        width: '350px',
-                        height: '80px',
-                        background:
-                          'linear-gradient(to right, rgba(255,255,255,0.3), rgba(108,99,255,0.15), transparent)',
-                        clipPath:
-                          'polygon(0 20%, 100% 0%, 100% 100%, 0 80%)',
-                        filter: 'blur(4px)',
-                      }}
-                    />
-                    <div
-                      className="absolute"
-                      style={{
-                        left: '100%',
-                        top: '40%',
-                        width: '200px',
-                        height: '50px',
-                        background:
-                          'linear-gradient(to right, rgba(255,255,255,0.4), transparent)',
-                        clipPath:
-                          'polygon(0 25%, 100% 0%, 100% 100%, 0 75%)',
-                        filter: 'blur(2px)',
-                      }}
-                    />
+            <div className="relative mx-auto" style={{ width: '80px', height: '100px' }}>
+              {/* Fingerprint SVG */}
+              <svg viewBox="0 0 100 120" className="w-full h-full">
+                <defs>
+                  <clipPath id="fpClip">
+                    <rect x="0" y={120 - (fingerprintProgress * 1.2)} width="100" height="120" />
+                  </clipPath>
+                </defs>
+                {/* Base fingerprint (gray) */}
+                <g stroke="rgba(148,163,175,0.3)" strokeWidth="1.5" fill="none" strokeLinecap="round">
+                  <path d="M 30 20 Q 50 15 70 20" />
+                  <path d="M 25 30 Q 50 22 75 30" />
+                  <path d="M 22 40 Q 50 30 78 40" />
+                  <path d="M 25 50 Q 50 40 75 50" />
+                  <path d="M 28 60 Q 50 50 72 60" />
+                  <path d="M 30 70 Q 50 62 70 70" />
+                  <path d="M 32 80 Q 50 72 68 80" />
+                  <path d="M 35 90 Q 50 82 65 90" />
+                  <path d="M 40 100 Q 50 95 60 100" />
+                </g>
+                {/* Scanned part (colored) */}
+                <g stroke="#43e97b" strokeWidth="1.5" fill="none" strokeLinecap="round" clipPath="url(#fpClip)" style={{ filter: 'drop-shadow(0 0 3px #43e97b)' }}>
+                  <path d="M 30 20 Q 50 15 70 20" />
+                  <path d="M 25 30 Q 50 22 75 30" />
+                  <path d="M 22 40 Q 50 30 78 40" />
+                  <path d="M 25 50 Q 50 40 75 50" />
+                  <path d="M 28 60 Q 50 50 72 60" />
+                  <path d="M 30 70 Q 50 62 70 70" />
+                  <path d="M 32 80 Q 50 72 68 80" />
+                  <path d="M 35 90 Q 50 82 65 90" />
+                  <path d="M 40 100 Q 50 95 60 100" />
+                </g>
+              </svg>
 
-                    {/* ── Exhaust flames ── */}
-                    <div
-                      className="absolute"
-                      style={{
-                        right: '100%',
-                        top: '58%',
-                        transform: 'translateY(-50%)',
-                      }}
-                    >
-                      <motion.div
-                        animate={{
-                          width: ['55px', '95px', '55px'],
-                          opacity: [0.9, 1, 0.9],
-                        }}
-                        transition={{
-                          duration: 0.15,
-                          repeat: Infinity,
-                          ease: 'easeInOut',
-                        }}
-                        style={{
-                          height: '12px',
-                          background:
-                            'linear-gradient(to left, #ff3366, #ff6584, #ff9500, #ffcc00, transparent)',
-                          borderRadius: '0 6px 6px 0',
-                          filter: 'blur(1.5px)',
-                        }}
-                      />
-                      <motion.div
-                        animate={{
-                          width: ['35px', '60px', '35px'],
-                          opacity: [0.6, 0.9, 0.6],
-                        }}
-                        transition={{
-                          duration: 0.12,
-                          repeat: Infinity,
-                          ease: 'easeInOut',
-                        }}
-                        style={{
-                          height: '6px',
-                          marginTop: '-10px',
-                          background:
-                            'linear-gradient(to left, #6c63ff, #3b82f6, transparent)',
-                          borderRadius: '0 3px 3px 0',
-                          filter: 'blur(1px)',
-                        }}
-                      />
-                    </div>
-
-                    {/* ── Motion blur trail ── */}
-                    <div
-                      style={{
-                        position: 'absolute',
-                        right: '100%',
-                        top: '10%',
-                        width: '300px',
-                        height: '80%',
-                        background:
-                          'linear-gradient(to left, rgba(108,99,255,0.4), rgba(255,101,132,0.2), transparent)',
-                        filter: 'blur(6px)',
-                        borderRadius: '4px',
-                      }}
-                    />
-
-                    {/* ═══ CUSTOM SPORTS CAR SVG ═══ */}
-                    <svg
-                      width="380"
-                      height="140"
-                      viewBox="0 0 380 140"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                      style={{
-                        filter:
-                          'drop-shadow(0 10px 25px rgba(108,99,255,0.5)) drop-shadow(0 0 30px rgba(108,99,255,0.3))',
-                      }}
-                    >
-                      {/* Gradient definitions */}
-                      <defs>
-                        {/* Main body gradient */}
-                        <linearGradient
-                          id="bodyGrad"
-                          x1="0%"
-                          y1="0%"
-                          x2="0%"
-                          y2="100%"
-                        >
-                          <stop offset="0%" stopColor="#2a2f4f" />
-                          <stop offset="45%" stopColor="#1a1f3a" />
-                          <stop offset="100%" stopColor="#0a0e1f" />
-                        </linearGradient>
-
-                        {/* Roof gradient */}
-                        <linearGradient
-                          id="roofGrad"
-                          x1="0%"
-                          y1="0%"
-                          x2="0%"
-                          y2="100%"
-                        >
-                          <stop offset="0%" stopColor="#3a3f5f" />
-                          <stop offset="100%" stopColor="#1a1f3a" />
-                        </linearGradient>
-
-                        {/* Window gradient */}
-                        <linearGradient
-                          id="windowGrad"
-                          x1="0%"
-                          y1="0%"
-                          x2="100%"
-                          y2="100%"
-                        >
-                          <stop
-                            offset="0%"
-                            stopColor="#6c63ff"
-                            stopOpacity="0.35"
-                          />
-                          <stop
-                            offset="50%"
-                            stopColor="#8b7fff"
-                            stopOpacity="0.15"
-                          />
-                          <stop
-                            offset="100%"
-                            stopColor="#6c63ff"
-                            stopOpacity="0.25"
-                          />
-                        </linearGradient>
-
-                        {/* Headlight gradient */}
-                        <radialGradient id="headlightGrad">
-                          <stop offset="0%" stopColor="#ffffff" />
-                          <stop offset="40%" stopColor="#a8b7ff" />
-                          <stop offset="100%" stopColor="#6c63ff" />
-                        </radialGradient>
-
-                        {/* Wheel gradient */}
-                        <radialGradient id="wheelGrad">
-                          <stop offset="0%" stopColor="#2a2f4f" />
-                          <stop offset="70%" stopColor="#0a0a1a" />
-                          <stop offset="100%" stopColor="#000" />
-                        </radialGradient>
-
-                        {/* Body shine */}
-                        <linearGradient
-                          id="shineGrad"
-                          x1="0%"
-                          y1="0%"
-                          x2="0%"
-                          y2="100%"
-                        >
-                          <stop
-                            offset="0%"
-                            stopColor="#ffffff"
-                            stopOpacity="0.15"
-                          />
-                          <stop
-                            offset="100%"
-                            stopColor="#ffffff"
-                            stopOpacity="0"
-                          />
-                        </linearGradient>
-                      </defs>
-
-                      {/* ═══ SHADOW UNDER CAR ═══ */}
-                      <ellipse
-                        cx="190"
-                        cy="128"
-                        rx="150"
-                        ry="8"
-                        fill="rgba(108,99,255,0.4)"
-                        style={{ filter: 'blur(6px)' }}
-                      />
-
-                      {/* ═══ MAIN LOWER BODY ═══ */}
-                      <path
-                        d="M 30 95
-                           L 45 82
-                           L 70 75
-                           L 100 72
-                           L 280 72
-                           L 320 78
-                           L 345 88
-                           L 355 100
-                           L 355 108
-                           L 340 108
-                           L 340 100
-                           L 320 100
-                           L 320 108
-                           L 90 108
-                           L 90 100
-                           L 65 100
-                           L 65 108
-                           L 40 108
-                           L 30 100 Z"
-                        fill="url(#bodyGrad)"
-                        stroke="rgba(108,99,255,0.5)"
-                        strokeWidth="1.2"
-                      />
-
-                      {/* ═══ ROOF ═══ */}
-                      <path
-                        d="M 105 72
-                           L 130 42
-                           L 250 42
-                           L 275 72 Z"
-                        fill="url(#roofGrad)"
-                        stroke="rgba(108,99,255,0.4)"
-                        strokeWidth="1"
-                      />
-
-                      {/* Roof top highlight */}
-                      <path
-                        d="M 135 43 L 245 43"
-                        stroke="rgba(255,255,255,0.15)"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                      />
-
-                      {/* ═══ WINDSHIELD ═══ */}
-                      <path
-                        d="M 108 72
-                           L 130 44
-                           L 175 44
-                           L 175 72 Z"
-                        fill="url(#windowGrad)"
-                        stroke="rgba(108,99,255,0.6)"
-                        strokeWidth="0.8"
-                      />
-
-                      {/* Windshield reflection */}
-                      <path
-                        d="M 115 65
-                           L 128 48
-                           L 132 48
-                           L 120 65 Z"
-                        fill="rgba(255,255,255,0.2)"
-                      />
-
-                      {/* ═══ REAR WINDOW ═══ */}
-                      <path
-                        d="M 205 44
-                           L 250 44
-                           L 272 72
-                           L 205 72 Z"
-                        fill="url(#windowGrad)"
-                        stroke="rgba(108,99,255,0.6)"
-                        strokeWidth="0.8"
-                      />
-
-                      {/* Rear window reflection */}
-                      <path
-                        d="M 240 48 L 260 65 L 265 65 L 245 48 Z"
-                        fill="rgba(255,255,255,0.15)"
-                      />
-
-                      {/* ═══ SIDE WINDOW (between doors) ═══ */}
-                      <path
-                        d="M 180 44
-                           L 200 44
-                           L 200 72
-                           L 180 72 Z"
-                        fill="url(#windowGrad)"
-                        stroke="rgba(108,99,255,0.5)"
-                        strokeWidth="0.6"
-                      />
-
-                      {/* B-pillar */}
-                      <line
-                        x1="190"
-                        y1="44"
-                        x2="190"
-                        y2="72"
-                        stroke="rgba(30,35,60,0.8)"
-                        strokeWidth="2"
-                      />
-
-                      {/* ═══ BODY SHINE (top highlight) ═══ */}
-                      <path
-                        d="M 65 78
-                           L 320 78
-                           L 320 82
-                           L 65 82 Z"
-                        fill="url(#shineGrad)"
-                      />
-
-                      {/* ═══ CHARACTER LINES ═══ */}
-                      {/* Upper body line */}
-                      <line
-                        x1="55"
-                        y1="90"
-                        x2="330"
-                        y2="90"
-                        stroke="rgba(108,99,255,0.3)"
-                        strokeWidth="0.8"
-                      />
-                      {/* Lower rocker line */}
-                      <line
-                        x1="45"
-                        y1="105"
-                        x2="345"
-                        y2="105"
-                        stroke="rgba(108,99,255,0.2)"
-                        strokeWidth="0.5"
-                      />
-
-                      {/* ═══ DOOR HANDLES ═══ */}
-                      <rect
-                        x="145"
-                        y="83"
-                        width="14"
-                        height="3"
-                        rx="1.5"
-                        fill="rgba(0,0,0,0.6)"
-                        stroke="rgba(108,99,255,0.4)"
-                        strokeWidth="0.5"
-                      />
-                      <rect
-                        x="215"
-                        y="83"
-                        width="14"
-                        height="3"
-                        rx="1.5"
-                        fill="rgba(0,0,0,0.6)"
-                        stroke="rgba(108,99,255,0.4)"
-                        strokeWidth="0.5"
-                      />
-
-                      {/* Door lines */}
-                      <line
-                        x1="140"
-                        y1="72"
-                        x2="140"
-                        y2="105"
-                        stroke="rgba(30,35,60,0.7)"
-                        strokeWidth="0.8"
-                      />
-                      <line
-                        x1="210"
-                        y1="72"
-                        x2="210"
-                        y2="105"
-                        stroke="rgba(30,35,60,0.7)"
-                        strokeWidth="0.8"
-                      />
-
-                      {/* ═══ SIDE MIRROR ═══ */}
-                      <path
-                        d="M 128 50
-                           L 122 46
-                           L 118 52
-                           L 124 55 Z"
-                        fill="#1a1f3a"
-                        stroke="rgba(108,99,255,0.4)"
-                        strokeWidth="0.5"
-                      />
-                      {/* Mirror glass */}
-                      <path
-                        d="M 121 47
-                           L 124 46
-                           L 123 51
-                           L 120 52 Z"
-                        fill="rgba(108,99,255,0.3)"
-                      />
-
-                      {/* ═══ FRONT (RIGHT SIDE) ═══ */}
-                      {/* Hood */}
-                      <path
-                        d="M 275 72
-                           L 320 78
-                           L 345 88
-                           L 340 82
-                           L 300 74 Z"
-                        fill="rgba(58,63,95,0.8)"
-                        stroke="rgba(108,99,255,0.3)"
-                        strokeWidth="0.5"
-                      />
-
-                      {/* Front bumper */}
-                      <path
-                        d="M 340 95
-                           L 358 95
-                           L 358 102
-                           L 340 102 Z"
-                        fill="#0d1224"
-                        stroke="rgba(108,99,255,0.3)"
-                        strokeWidth="0.5"
-                      />
-
-                      {/* Front grille */}
-                      <rect
-                        x="335"
-                        y="90"
-                        width="20"
-                        height="8"
-                        rx="1.5"
-                        fill="#000"
-                        stroke="rgba(108,99,255,0.4)"
-                        strokeWidth="0.8"
-                      />
-                      {/* Grille slats */}
-                      {[0, 2, 4, 6].map((y) => (
-                        <line
-                          key={`grille-${y}`}
-                          x1="336"
-                          y1={91 + y}
-                          x2="354"
-                          y2={91 + y}
-                          stroke="rgba(108,99,255,0.3)"
-                          strokeWidth="0.4"
-                        />
-                      ))}
-
-                      {/* ═══ HEADLIGHTS (Angel Eyes style) ═══ */}
-                      <ellipse
-                        cx="350"
-                        cy="83"
-                        rx="7"
-                        ry="5"
-                        fill="url(#headlightGrad)"
-                        stroke="#fff"
-                        strokeWidth="0.8"
-                      >
-                        <animate
-                          attributeName="fill-opacity"
-                          values="0.9;1;0.9"
-                          dur="1s"
-                          repeatCount="indefinite"
-                        />
-                      </ellipse>
-                      {/* Inner headlight */}
-                      <circle
-                        cx="350"
-                        cy="83"
-                        r="2.5"
-                        fill="#fff"
-                        opacity="0.9"
-                      />
-                      {/* Headlight ring glow */}
-                      <ellipse
-                        cx="350"
-                        cy="83"
-                        rx="9"
-                        ry="6.5"
-                        fill="none"
-                        stroke="rgba(108,99,255,0.6)"
-                        strokeWidth="1"
-                        opacity="0.7"
-                      >
-                        <animate
-                          attributeName="opacity"
-                          values="0.4;0.9;0.4"
-                          dur="1.5s"
-                          repeatCount="indefinite"
-                        />
-                      </ellipse>
-
-                      {/* DRL strip */}
-                      <path
-                        d="M 342 76 L 355 74"
-                        stroke="#6c63ff"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        opacity="0.9"
-                      >
-                        <animate
-                          attributeName="opacity"
-                          values="0.6;1;0.6"
-                          dur="1.2s"
-                          repeatCount="indefinite"
-                        />
-                      </path>
-
-                      {/* Fog lights */}
-                      <circle
-                        cx="345"
-                        cy="99"
-                        r="2"
-                        fill="#ffeb3b"
-                        opacity="0.7"
-                      >
-                        <animate
-                          attributeName="opacity"
-                          values="0.5;0.9;0.5"
-                          dur="0.9s"
-                          repeatCount="indefinite"
-                        />
-                      </circle>
-
-                      {/* Air intake */}
-                      <path
-                        d="M 320 100
-                           L 340 100
-                           L 342 106
-                           L 320 106 Z"
-                        fill="#000"
-                        stroke="rgba(108,99,255,0.3)"
-                        strokeWidth="0.5"
-                      />
-
-                      {/* ═══ REAR (LEFT SIDE) ═══ */}
-                      {/* Trunk */}
-                      <path
-                        d="M 30 95
-                           L 45 82
-                           L 65 76
-                           L 105 72
-                           L 105 82
-                           L 60 88 Z"
-                        fill="rgba(42,47,79,0.7)"
-                        stroke="rgba(108,99,255,0.3)"
-                        strokeWidth="0.5"
-                      />
-
-                      {/* Rear bumper */}
-                      <path
-                        d="M 22 95
-                           L 40 95
-                           L 40 102
-                           L 22 102 Z"
-                        fill="#0d1224"
-                        stroke="rgba(108,99,255,0.3)"
-                        strokeWidth="0.5"
-                      />
-
-                      {/* ═══ TAIL LIGHTS ═══ */}
-                      <rect
-                        x="30"
-                        y="80"
-                        width="14"
-                        height="8"
-                        rx="2"
-                        fill="#ff2020"
-                        opacity="0.95"
-                      >
-                        <animate
-                          attributeName="opacity"
-                          values="0.7;1;0.7"
-                          dur="0.8s"
-                          repeatCount="indefinite"
-                        />
-                      </rect>
-                      {/* Tail light bar */}
-                      <rect
-                        x="32"
-                        y="82"
-                        width="10"
-                        height="1.5"
-                        rx="0.5"
-                        fill="#fff"
-                        opacity="0.6"
-                      />
-                      {/* Tail light glow */}
-                      <rect
-                        x="27"
-                        y="78"
-                        width="20"
-                        height="12"
-                        rx="3"
-                        fill="rgba(255,32,32,0.4)"
-                        style={{ filter: 'blur(4px)' }}
-                      >
-                        <animate
-                          attributeName="opacity"
-                          values="0.4;0.8;0.4"
-                          dur="0.8s"
-                          repeatCount="indefinite"
-                        />
-                      </rect>
-
-                      {/* Exhaust tips */}
-                      <ellipse
-                        cx="26"
-                        cy="99"
-                        rx="4"
-                        ry="2.5"
-                        fill="#1a1a1a"
-                        stroke="rgba(255,101,132,0.7)"
-                        strokeWidth="1"
-                      />
-                      <ellipse
-                        cx="26"
-                        cy="99"
-                        rx="2"
-                        ry="1"
-                        fill="#ff6584"
-                        opacity="0.6"
-                      />
-
-                      {/* ═══ MA BADGE (You!) ═══ */}
-                      <rect
-                        x="175"
-                        y="92"
-                        width="30"
-                        height="12"
-                        rx="2.5"
-                        fill="rgba(0,0,0,0.7)"
-                        stroke="rgba(108,99,255,0.5)"
-                        strokeWidth="0.8"
-                      />
-                      {/* Colored stripes */}
-                      <rect
-                        x="177"
-                        y="94"
-                        width="4"
-                        height="8"
-                        rx="0.5"
-                        fill="#6c63ff"
-                      />
-                      <rect
-                        x="182"
-                        y="94"
-                        width="4"
-                        height="8"
-                        rx="0.5"
-                        fill="#ff6584"
-                      />
-                      <rect
-                        x="187"
-                        y="94"
-                        width="4"
-                        height="8"
-                        rx="0.5"
-                        fill="#43e97b"
-                      />
-                      <text
-                        x="197"
-                        y="101"
-                        fill="white"
-                        fontSize="8"
-                        fontWeight="900"
-                        fontFamily="Arial, sans-serif"
-                        textAnchor="middle"
-                      >
-                        MA
-                      </text>
-
-                      {/* ═══ FRONT WHEEL ═══ */}
-                      {/* Wheel arch shadow */}
-                      <ellipse
-                        cx="298"
-                        cy="108"
-                        rx="22"
-                        ry="6"
-                        fill="rgba(0,0,0,0.5)"
-                      />
-                      {/* Tire */}
-                      <circle
-                        cx="298"
-                        cy="108"
-                        r="18"
-                        fill="#0a0a0a"
-                        stroke="rgba(108,99,255,0.6)"
-                        strokeWidth="1.5"
-                      />
-                      {/* Tire sidewall */}
-                      <circle
-                        cx="298"
-                        cy="108"
-                        r="15"
-                        fill="#151515"
-                        stroke="rgba(255,255,255,0.08)"
-                        strokeWidth="0.5"
-                      />
-                      {/* Rim */}
-                      <circle
-                        cx="298"
-                        cy="108"
-                        r="10"
-                        fill="url(#wheelGrad)"
-                        stroke="rgba(108,99,255,0.5)"
-                        strokeWidth="1"
-                      />
-                      {/* Rim spokes (5-star sport rim) */}
-                      {[0, 72, 144, 216, 288].map((angle) => (
-                        <g key={`fspoke-${angle}`}>
-                          <line
-                            x1="298"
-                            y1="108"
-                            x2={
-                              298 +
-                              Math.cos((angle * Math.PI) / 180) * 9
-                            }
-                            y2={
-                              108 +
-                              Math.sin((angle * Math.PI) / 180) * 9
-                            }
-                            stroke="rgba(108,99,255,0.7)"
-                            strokeWidth="2.2"
-                            strokeLinecap="round"
-                          />
-                          <circle
-                            cx={
-                              298 +
-                              Math.cos((angle * Math.PI) / 180) * 7
-                            }
-                            cy={
-                              108 +
-                              Math.sin((angle * Math.PI) / 180) * 7
-                            }
-                            r="1.5"
-                            fill="rgba(108,99,255,0.4)"
-                          />
-                        </g>
-                      ))}
-                      {/* Center cap */}
-                      <circle
-                        cx="298"
-                        cy="108"
-                        r="3"
-                        fill="#1a1f3a"
-                        stroke="rgba(108,99,255,0.8)"
-                        strokeWidth="0.8"
-                      />
-                      <circle
-                        cx="298"
-                        cy="108"
-                        r="1.5"
-                        fill="#6c63ff"
-                        opacity="0.8"
-                      />
-                      {/* Brake caliper */}
-                      <path
-                        d="M 305 102 L 308 108 L 305 114 L 302 111 L 302 105 Z"
-                        fill="rgba(255,101,132,0.8)"
-                      >
-                        <animate
-                          attributeName="opacity"
-                          values="0.6;1;0.6"
-                          dur="0.5s"
-                          repeatCount="indefinite"
-                        />
-                      </path>
-
-                      {/* ═══ REAR WHEEL ═══ */}
-                      <ellipse
-                        cx="80"
-                        cy="108"
-                        rx="22"
-                        ry="6"
-                        fill="rgba(0,0,0,0.5)"
-                      />
-                      <circle
-                        cx="80"
-                        cy="108"
-                        r="18"
-                        fill="#0a0a0a"
-                        stroke="rgba(108,99,255,0.6)"
-                        strokeWidth="1.5"
-                      />
-                      <circle
-                        cx="80"
-                        cy="108"
-                        r="15"
-                        fill="#151515"
-                        stroke="rgba(255,255,255,0.08)"
-                        strokeWidth="0.5"
-                      />
-                      <circle
-                        cx="80"
-                        cy="108"
-                        r="10"
-                        fill="url(#wheelGrad)"
-                        stroke="rgba(108,99,255,0.5)"
-                        strokeWidth="1"
-                      />
-                      {[0, 72, 144, 216, 288].map((angle) => (
-                        <g key={`rspoke-${angle}`}>
-                          <line
-                            x1="80"
-                            y1="108"
-                            x2={
-                              80 +
-                              Math.cos((angle * Math.PI) / 180) * 9
-                            }
-                            y2={
-                              108 +
-                              Math.sin((angle * Math.PI) / 180) * 9
-                            }
-                            stroke="rgba(108,99,255,0.7)"
-                            strokeWidth="2.2"
-                            strokeLinecap="round"
-                          />
-                          <circle
-                            cx={
-                              80 +
-                              Math.cos((angle * Math.PI) / 180) * 7
-                            }
-                            cy={
-                              108 +
-                              Math.sin((angle * Math.PI) / 180) * 7
-                            }
-                            r="1.5"
-                            fill="rgba(108,99,255,0.4)"
-                          />
-                        </g>
-                      ))}
-                      <circle
-                        cx="80"
-                        cy="108"
-                        r="3"
-                        fill="#1a1f3a"
-                        stroke="rgba(108,99,255,0.8)"
-                        strokeWidth="0.8"
-                      />
-                      <circle
-                        cx="80"
-                        cy="108"
-                        r="1.5"
-                        fill="#6c63ff"
-                        opacity="0.8"
-                      />
-                      <path
-                        d="M 87 102 L 90 108 L 87 114 L 84 111 L 84 105 Z"
-                        fill="rgba(255,101,132,0.8)"
-                      >
-                        <animate
-                          attributeName="opacity"
-                          values="0.6;1;0.6"
-                          dur="0.5s"
-                          repeatCount="indefinite"
-                        />
-                      </path>
-
-                      {/* ═══ NEON UNDERGLOW ═══ */}
-                      <ellipse
-                        cx="190"
-                        cy="118"
-                        rx="130"
-                        ry="4"
-                        fill="rgba(108,99,255,0.7)"
-                        style={{ filter: 'blur(6px)' }}
-                      >
-                        <animate
-                          attributeName="opacity"
-                          values="0.5;1;0.5"
-                          dur="1.2s"
-                          repeatCount="indefinite"
-                        />
-                      </ellipse>
-                      {/* Secondary underglow */}
-                      <ellipse
-                        cx="190"
-                        cy="120"
-                        rx="100"
-                        ry="3"
-                        fill="rgba(255,101,132,0.5)"
-                        style={{ filter: 'blur(4px)' }}
-                      >
-                        <animate
-                          attributeName="opacity"
-                          values="0.3;0.7;0.3"
-                          dur="1s"
-                          repeatCount="indefinite"
-                        />
-                      </ellipse>
-
-                      {/* ═══ REAR SPOILER ═══ */}
-                      <path
-                        d="M 55 75
-                           L 105 72
-                           L 105 68
-                           L 55 71 Z"
-                        fill="rgba(30,35,60,0.9)"
-                        stroke="rgba(108,99,255,0.5)"
-                        strokeWidth="0.8"
-                      />
-                      {/* Spoiler support */}
-                      <rect
-                        x="60"
-                        y="71"
-                        width="1.5"
-                        height="6"
-                        fill="rgba(108,99,255,0.3)"
-                      />
-                      <rect
-                        x="98"
-                        y="71"
-                        width="1.5"
-                        height="6"
-                        fill="rgba(108,99,255,0.3)"
-                      />
-                    </svg>
-
-                    {/* ── Tire smoke ── */}
-                    {[0, 1, 2, 3].map((i) => (
-                      <motion.div
-                        key={`smoke-${i}`}
-                        className="absolute rounded-full"
-                        style={{
-                          width: `${18 + i * 6}px`,
-                          height: `${18 + i * 6}px`,
-                          bottom: '-8px',
-                          right: `${72 + i * 8}%`,
-                          background: 'rgba(255,255,255,0.05)',
-                          filter: 'blur(10px)',
-                        }}
-                        animate={{
-                          x: [-15, -80 - i * 30],
-                          y: [0, -25 - i * 10],
-                          opacity: [0.25, 0],
-                          scale: [1, 3 + i * 0.5],
-                        }}
-                        transition={{
-                          duration: 0.6 + i * 0.1,
-                          repeat: Infinity,
-                          delay: i * 0.1,
-                          ease: 'easeOut',
-                        }}
-                      />
-                    ))}
-
-                    {/* ── Ground sparks ── */}
-                    {[0, 1, 2, 3].map((i) => (
-                      <motion.div
-                        key={`spark-${i}`}
-                        className="absolute rounded-full"
-                        style={{
-                          width: '4px',
-                          height: '4px',
-                          bottom: '-2px',
-                          left: `${25 + i * 20}%`,
-                          background: '#ffcc00',
-                          boxShadow: '0 0 6px #ffcc00',
-                        }}
-                        animate={{
-                          x: [0, -40 - i * 20],
-                          y: [0, -15, 5],
-                          opacity: [1, 0],
-                          scale: [1, 0],
-                        }}
-                        transition={{
-                          duration: 0.4,
-                          repeat: Infinity,
-                          delay: i * 0.12 + Math.random() * 0.3,
-                          ease: 'easeOut',
-                        }}
-                      />
-                    ))}
-                  </div>
-                </motion.div>
-
-                {/* Speed lines */}
-                {[15, 32, 48, 62, 78, 92].map((top, i) => (
-                  <motion.div
-                    key={`speed-${i}`}
-                    initial={{ scaleX: 0, opacity: 0 }}
-                    animate={{
-                      scaleX: [0, 1, 0],
-                      opacity: [0, 0.5, 0],
-                    }}
-                    transition={{
-                      duration: 0.4,
-                      delay: 0.3 + i * 0.08,
-                      repeat: Infinity,
-                      repeatDelay: 0.2,
-                    }}
-                    style={{
-                      position: 'absolute',
-                      top: `${top}px`,
-                      right: '2%',
-                      width: `${60 + i * 25}px`,
-                      height: '1.5px',
-                      background: `linear-gradient(to left, transparent, ${
-                        i % 2 === 0
-                          ? 'rgba(108,99,255,0.6)'
-                          : 'rgba(255,101,132,0.5)'
-                      })`,
-                      transformOrigin: 'right',
-                    }}
-                  />
-                ))}
-              </div>
-
-              {/* Name */}
+              {/* Scan line */}
               <motion.div
-                initial={{ opacity: 0, y: 25 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5, duration: 0.7 }}
-                className="mt-8 text-center"
-              >
-                <p
-                  className="text-4xl font-extrabold sm:text-5xl"
-                  style={{
-                    background:
-                      'linear-gradient(135deg, #6c63ff, #ff6584, #43e97b)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                    fontFamily: 'Manrope, sans-serif',
-                    letterSpacing: '-0.02em',
-                  }}
-                >
-                  {profile.name}
-                </p>
-                <p
-                  className="mt-2 text-sm font-semibold uppercase tracking-[0.3em]"
-                  style={{ color: 'rgba(148,163,175,0.7)' }}
-                >
-                  {profile.title}
-                </p>
+                className="absolute left-0 right-0 h-[2px]"
+                style={{
+                  background: '#43e97b',
+                  boxShadow: '0 0 10px #43e97b',
+                  bottom: `${fingerprintProgress}%`,
+                }}
+              />
+            </div>
 
-                {audioLoaded && (
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 1.2 }}
-                    className="mt-2 text-[0.6rem] uppercase tracking-[0.2em]"
-                    style={{ color: 'rgba(108,99,255,0.4)' }}
-                  >
-                    🔊 Engine Sound ON
-                  </motion.p>
-                )}
-              </motion.div>
+            <p className="mt-2 text-center text-[0.6rem] font-mono tabular-nums" style={{ color: fingerprintProgress === 100 ? '#43e97b' : '#6c63ff' }}>
+              {fingerprintProgress === 100 ? '✓ VERIFIED' : `${fingerprintProgress}%`}
+            </p>
+          </div>
 
-              {/* Progress */}
-              <div className="mt-8" style={{ width: '300px' }}>
-                <div
-                  className="overflow-hidden rounded-full"
-                  style={{
-                    height: '4px',
-                    background: 'rgba(108,99,255,0.12)',
-                  }}
-                >
+          {/* ═══ STATS PANEL (BOTTOM LEFT) ═══ */}
+          <motion.div
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 1 }}
+            className="absolute rounded-lg p-3 font-mono text-[0.65rem]"
+            style={{
+              bottom: '80px',
+              left: '20px',
+              background: 'rgba(10,15,30,0.9)',
+              border: '1px solid rgba(108,99,255,0.4)',
+              width: '200px',
+              backdropFilter: 'blur(10px)',
+            }}
+          >
+            <p className="uppercase tracking-widest mb-2" style={{ color: 'rgba(108,99,255,0.7)' }}>
+              System Stats
+            </p>
+            {[
+              { label: 'React', value: 95 },
+              { label: 'Node.js', value: 92 },
+              { label: 'MongoDB', value: 90 },
+              { label: 'Experience', value: 85 },
+            ].map((stat, i) => (
+              <div key={stat.label} className="mb-1.5">
+                <div className="flex justify-between mb-0.5">
+                  <span style={{ color: '#94a3b8' }}>{stat.label}</span>
+                  <span style={{ color: '#6c63ff' }}>{stat.value}%</span>
+                </div>
+                <div className="h-1 rounded-full overflow-hidden" style={{ background: 'rgba(108,99,255,0.1)' }}>
                   <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${stat.value}%` }}
+                    transition={{ delay: 1 + i * 0.15, duration: 0.8 }}
                     style={{
-                      width: `${progress}%`,
                       height: '100%',
-                      background:
-                        'linear-gradient(90deg, #6c63ff, #ff6584, #43e97b)',
-                      boxShadow: '0 0 15px rgba(108,99,255,0.7)',
-                      borderRadius: '999px',
+                      background: 'linear-gradient(90deg, #6c63ff, #ff6584)',
+                      boxShadow: '0 0 5px #6c63ff',
                     }}
-                    transition={{ duration: 0.05 }}
                   />
                 </div>
-                <div className="mt-2 flex justify-between">
-                  <span
-                    className="text-[0.65rem] font-medium"
-                    style={{ color: 'rgba(148,163,175,0.5)' }}
-                  >
-                    Loading portfolio
-                  </span>
-                  <span
-                    className="text-[0.65rem] font-bold tabular-nums"
-                    style={{ color: '#6c63ff' }}
-                  >
-                    {Math.round(progress)}%
-                  </span>
-                </div>
               </div>
+            ))}
+          </motion.div>
 
-              <motion.div
-  initial={{ opacity: 0 }}
-  animate={{ opacity: 1 }}
-  transition={{ delay: 0.5 }}
-  className="mt-5 flex items-center gap-2 text-[0.65rem] uppercase tracking-widest"
-  style={{
-    color: audioLoaded
-      ? 'rgba(108,99,255,0.6)'
-      : 'rgba(255,255,255,0.3)',
-  }}
->
-  {audioLoaded ? (
-    <>
-      <motion.span
-        animate={{ scale: [1, 1.3, 1] }}
-        transition={{ duration: 1, repeat: Infinity }}
-        style={{ fontSize: '14px' }}
-      >
-        🔊
-      </motion.span>
-      <span>Engine Sound ON</span>
-    </>
-  ) : (
-    <>
-      <motion.span
-        animate={{ opacity: [0.3, 1, 0.3] }}
-        transition={{ duration: 1.5, repeat: Infinity }}
-        style={{ fontSize: '14px' }}
-      >
-        👆
-      </motion.span>
-      <span>Click anywhere for engine sound</span>
-    </>
-  )}
-</motion.div>
-            </>
+          {/* ═══ LOCATION PANEL (BOTTOM RIGHT) ═══ */}
+          <motion.div
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 1.2 }}
+            className="absolute rounded-lg p-3 font-mono text-[0.6rem]"
+            style={{
+              bottom: '80px',
+              right: '20px',
+              background: 'rgba(10,15,30,0.9)',
+              border: '1px solid rgba(108,99,255,0.4)',
+              backdropFilter: 'blur(10px)',
+            }}
+          >
+            <p className="uppercase tracking-widest mb-2" style={{ color: 'rgba(108,99,255,0.7)' }}>
+              📡 Location
+            </p>
+            <p style={{ color: '#94a3b8' }}>Swat, Pakistan 🇵🇰</p>
+            <p style={{ color: '#94a3b8' }}>Lat: 34.7°N | Lng: 72.3°E</p>
+            <p className="mt-1" style={{ color: '#43e97b' }}>Ping: 23ms | ● ONLINE</p>
+          </motion.div>
+
+          {/* ═══ NEURAL NETWORK ═══ */}
+          {(phase === 'network' || phase === 'activation') && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <svg viewBox="0 0 100 100" style={{ width: 'min(500px, 70vw)', height: 'min(500px, 70vw)' }}>
+                {connections.map(([from, to], i) => {
+                  const fromNode = nodes.find((n) => n.id === from);
+                  const toNode = nodes.find((n) => n.id === to);
+                  return (
+                    <motion.line
+                      key={`conn-${i}`}
+                      x1={fromNode.x}
+                      y1={fromNode.y}
+                      x2={toNode.x}
+                      y2={toNode.y}
+                      stroke={phase === 'activation' ? '#ff6584' : '#6c63ff'}
+                      strokeWidth="0.25"
+                      initial={{ pathLength: 0, opacity: 0 }}
+                      animate={{
+                        pathLength: 1,
+                        opacity: phase === 'activation' ? [0.3, 1, 0.3] : 0.5,
+                      }}
+                      transition={{
+                        pathLength: { duration: 0.4, delay: i * 0.05 },
+                        opacity: phase === 'activation' ? { duration: 0.4, repeat: Infinity } : { duration: 0.3 },
+                      }}
+                      style={{ filter: 'drop-shadow(0 0 2px currentColor)' }}
+                    />
+                  );
+                })}
+
+                {phase === 'network' &&
+                  connections.map(([from, to], i) => {
+                    const fromNode = nodes.find((n) => n.id === from);
+                    const toNode = nodes.find((n) => n.id === to);
+                    return (
+                      <motion.circle
+                        key={`pulse-${i}`}
+                        r="0.5"
+                        fill="#ff6584"
+                        initial={{ cx: fromNode.x, cy: fromNode.y, opacity: 0 }}
+                        animate={{
+                          cx: [fromNode.x, toNode.x],
+                          cy: [fromNode.y, toNode.y],
+                          opacity: [0, 1, 0],
+                        }}
+                        transition={{
+                          duration: 1.5,
+                          delay: i * 0.1,
+                          repeat: Infinity,
+                          repeatDelay: 1,
+                        }}
+                        style={{ filter: 'drop-shadow(0 0 3px #ff6584)' }}
+                      />
+                    );
+                  })}
+
+                {nodes.map((node, i) => (
+                  <g key={`node-${node.id}`}>
+                    <motion.circle
+                      cx={node.x}
+                      cy={node.y}
+                      r="1.8"
+                      fill="none"
+                      stroke="#6c63ff"
+                      strokeWidth="0.15"
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{
+                        scale: phase === 'activation' ? [1, 2.5, 1] : 1,
+                        opacity: phase === 'activation' ? [0.5, 0, 0.5] : 0.4,
+                      }}
+                      transition={{
+                        scale: { duration: 1, repeat: Infinity, delay: i * 0.08 },
+                        opacity: { duration: 1, repeat: Infinity, delay: i * 0.08 },
+                      }}
+                    />
+                    <motion.circle
+                      cx={node.x}
+                      cy={node.y}
+                      r="1"
+                      fill={phase === 'activation' ? '#ff6584' : '#6c63ff'}
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: 0.3 + i * 0.04, type: 'spring' }}
+                      style={{ filter: 'drop-shadow(0 0 3px currentColor)' }}
+                    />
+                    <circle cx={node.x} cy={node.y} r="0.35" fill="white" opacity="0.9" />
+                  </g>
+                ))}
+              </svg>
+            </div>
           )}
 
+          {/* ═══ ACTIVATION FLASH ═══ */}
+          {phase === 'activation' && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: [0, 1, 0], scale: [0, 20, 25] }}
+              transition={{ duration: 0.8 }}
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none"
+              style={{
+                width: '100px',
+                height: '100px',
+                background: 'radial-gradient(circle, #ffffff, #6c63ff, transparent)',
+                boxShadow: '0 0 300px #6c63ff',
+              }}
+            />
+          )}
+
+          {/* ═══ REVEAL - IDENTITY CARD ═══ */}
           {phase === 'reveal' && (
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5 }}
-              className="text-center"
+              transition={{ duration: 0.6 }}
+              className="absolute inset-0 flex flex-col items-center justify-center px-4"
             >
+              {/* Holographic card */}
               <motion.div
-                initial={{ scale: 0, rotate: -20 }}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{
-                  type: 'spring',
-                  stiffness: 260,
-                  damping: 15,
-                }}
-                className="mx-auto mb-6"
+                initial={{ scale: 0.5, rotateY: -180, opacity: 0 }}
+                animate={{ scale: 1, rotateY: 0, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 100, damping: 20 }}
+                className="relative rounded-2xl p-6 sm:p-8 text-center"
                 style={{
-                  width: '100px',
-                  height: '100px',
-                  borderRadius: '28px',
-                  display: 'grid',
-                  placeItems: 'center',
                   background:
-                    'linear-gradient(135deg, #6c63ff, #ff6584)',
+                    'linear-gradient(135deg, rgba(108,99,255,0.15), rgba(255,101,132,0.1))',
+                  border: '2px solid rgba(108,99,255,0.5)',
                   boxShadow:
-                    '0 0 60px rgba(108,99,255,0.8), 0 0 120px rgba(108,99,255,0.3)',
-                  fontSize: '32px',
-                  fontWeight: '900',
-                  color: 'white',
-                  fontFamily: 'Manrope, sans-serif',
+                    '0 0 60px rgba(108,99,255,0.4), inset 0 0 30px rgba(255,255,255,0.05)',
+                  backdropFilter: 'blur(20px)',
+                  maxWidth: '400px',
                 }}
               >
-                {profile.initials}
-              </motion.div>
+                {/* Corner accents */}
+                {['top-left', 'top-right', 'bottom-left', 'bottom-right'].map((corner, i) => (
+                  <motion.div
+                    key={corner}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: [0.4, 1, 0.4] }}
+                    transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.2 }}
+                    className="absolute size-3 rounded-full"
+                    style={{
+                      [corner.split('-')[0]]: '-6px',
+                      [corner.split('-')[1]]: '-6px',
+                      background: '#6c63ff',
+                      boxShadow: '0 0 10px #6c63ff',
+                    }}
+                  />
+                ))}
 
-              <motion.p
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3, duration: 0.5 }}
-                className="text-3xl font-extrabold"
-                style={{
-                  background:
-                    'linear-gradient(135deg, #6c63ff, #ff6584)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                  fontFamily: 'Manrope, sans-serif',
-                }}
-              >
-                Welcome!
-              </motion.p>
+                {/* Logo */}
+                <motion.div
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: 'spring', delay: 0.3 }}
+                  className="mx-auto mb-4 grid place-items-center rounded-2xl"
+                  style={{
+                    width: '90px',
+                    height: '90px',
+                    background: 'linear-gradient(135deg, #6c63ff, #ff6584)',
+                    boxShadow: '0 0 40px rgba(108,99,255,0.8)',
+                    fontSize: '32px',
+                    fontWeight: '900',
+                    color: 'white',
+                    fontFamily: 'Manrope, sans-serif',
+                  }}
+                >
+                  {profile.initials}
+                </motion.div>
+
+                {/* Name */}
+                <motion.h1
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  className="text-xl sm:text-3xl font-extrabold mb-2"
+                  style={{
+                    background: 'linear-gradient(135deg, #ffffff, #6c63ff, #ff6584)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    fontFamily: 'Manrope, sans-serif',
+                  }}
+                >
+                  {profile.name}
+                </motion.h1>
+
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.7 }}
+                  className="text-[0.7rem] uppercase tracking-[0.3em] font-semibold mb-4"
+                  style={{ color: 'rgba(108,99,255,0.9)' }}
+                >
+                  {profile.title}
+                </motion.p>
+
+                {/* Status pills */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.9 }}
+                  className="flex flex-wrap justify-center gap-2"
+                >
+                  {['✓ VERIFIED', '✓ ONLINE', '✓ AVAILABLE'].map((status, i) => (
+                    <span
+                      key={status}
+                      className="text-[0.55rem] uppercase tracking-widest font-bold rounded-full px-2 py-1 font-mono"
+                      style={{
+                        background: 'rgba(67,233,123,0.15)',
+                        color: '#43e97b',
+                        border: '1px solid rgba(67,233,123,0.4)',
+                      }}
+                    >
+                      {status}
+                    </span>
+                  ))}
+                </motion.div>
+              </motion.div>
 
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.6 }}
-                className="mt-3 text-sm font-medium"
-                style={{ color: 'rgba(148,163,175,0.6)' }}
+                transition={{ delay: 1.2 }}
+                className="mt-6 text-[0.6rem] font-mono uppercase tracking-widest"
+                style={{ color: '#43e97b' }}
               >
-                Let's build something amazing
+                ► ACCESS GRANTED - INITIALIZING PORTFOLIO
               </motion.p>
             </motion.div>
           )}
+
+          {/* ═══ PROGRESS BAR ═══ */}
+          <div
+            className="absolute left-1/2 -translate-x-1/2 z-50"
+            style={{ bottom: '30px', width: 'min(400px, 85vw)' }}
+          >
+            <div className="mb-2 flex justify-between text-[0.6rem] uppercase tracking-widest font-mono">
+              <span style={{ color: 'rgba(148,163,175,0.6)' }}>
+                {phase === 'boot' && 'INITIALIZING'}
+                {phase === 'network' && 'NEURAL_LINK_ACTIVE'}
+                {phase === 'activation' && 'SYNAPSE_FIRING'}
+                {phase === 'reveal' && '● SYSTEM ONLINE'}
+              </span>
+              <span className="tabular-nums font-bold" style={{ color: '#6c63ff' }}>
+                {Math.round(progress)}%
+              </span>
+            </div>
+            <div className="overflow-hidden rounded-full h-1" style={{ background: 'rgba(108,99,255,0.1)', border: '1px solid rgba(108,99,255,0.2)' }}>
+              <motion.div
+                style={{
+                  width: `${progress}%`,
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #6c63ff, #ff6584, #43e97b)',
+                  boxShadow: '0 0 15px #6c63ff',
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Skip */}
+          <button
+            type="button"
+            onClick={() => {
+              if (audioRef.current) audioRef.current.pause();
+              onComplete();
+            }}
+            className="absolute z-50 text-[0.65rem] uppercase tracking-widest font-mono px-3 py-1 rounded"
+            style={{
+              top: '20px',
+              right: '220px',
+              color: 'rgba(148,163,175,0.5)',
+              border: '1px solid rgba(148,163,175,0.2)',
+            }}
+          >
+            [ESC] Skip →
+          </button>
         </motion.div>
       )}
     </AnimatePresence>
